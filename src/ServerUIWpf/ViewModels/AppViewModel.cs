@@ -13,6 +13,7 @@ using System.Windows.Forms;
 using System.Windows.Media;
 using Caliburn.Micro;
 using Communication.TcpIp;
+using Library.Logs;
 using Server.Entitys;
 using Server.Model;
 using ServerUi.Model;
@@ -22,7 +23,7 @@ using Screen = Caliburn.Micro.Screen;
 using TicketItem = ServerUi.Model.TicketItem;
 using Brush = System.Windows.Media.Brush;
 using MessageBox = System.Windows.MessageBox;
-using NLog;
+
 
 
 namespace ServerUi.ViewModels
@@ -33,7 +34,7 @@ namespace ServerUi.ViewModels
 
         private readonly ServerModel _model;
         private readonly Task _mainTask;
-        private readonly Logger _logger;
+        private readonly Log _logger;
 
         private const string SettingUiNameFile = @"Settings\settingsUi.dat";
 
@@ -46,7 +47,7 @@ namespace ServerUi.ViewModels
 
         public AppViewModel()
         {
-            _logger = NLog.LogManager.GetCurrentClassLogger();
+            _logger = new Log("Server.Main");
 
             _model = new ServerModel();
             _model.PropertyChanged += _model_PropertyChanged;
@@ -792,7 +793,6 @@ namespace ServerUi.ViewModels
                         var formatStr = $"Талон {ticketPrefix} {ticketNumber} Касса {ticket.CashierName}";
                         _model.SoundQueue.AddItem(new SoundTemplate(formatStr));
 
-
                         FillTable(ticket, TableMain);
 
                         //LOG
@@ -1029,7 +1029,7 @@ namespace ServerUi.ViewModels
                     {
                         strb.Append(c).Append("; ");
                     }
-                    _logger.Debug(strb);
+                    _logger.Debug(strb.ToString());
                 }
             }
         }
@@ -1279,15 +1279,6 @@ namespace ServerUi.ViewModels
 
         public void SaveTableSetting()
         {
-            //DEBUG---------------------------------
-            //for (int i = 0; i < 99; i++)
-            //{
-            //    Add(14);
-            //    Task.Delay(100).GetAwaiter();
-            //    Dell(14);
-            //}
-            //DEBUG---------------------------------
-
             SaveSettingUi();
         }
 
