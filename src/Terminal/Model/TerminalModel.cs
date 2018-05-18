@@ -121,7 +121,6 @@ namespace Terminal.Model
             if(!IsConnectTcpIp)
                 return;
 
-
             try
             {
                 //ЗАПРОС О СОСТОЯНИИ ОЧЕРЕДИ

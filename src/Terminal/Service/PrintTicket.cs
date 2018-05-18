@@ -80,36 +80,24 @@ namespace Terminal.Service
 
         private void Pd_PrintPage(object sender, PrintPageEventArgs e)
         {
-            //ПЕЧАТЬ ТЕКСТА
-            string printText = $"            Уважаемые пассажиры!\r\n" +
-                               $"            С помощью терминалов\r\n" +
-                               $"      самообслуживания Вы можете\r\n" +
-                               $"самостоятельно распечать билеты,\r\n" +
-                               $"         ранее оформленные через\r\n" +
-                               $" Интернет, или приобрести билеты\r\n" +
-                               $"  с оплатой по банковской карте,\r\n" +
-                               $"      если до отправления поезда\r\n" +
-                               $"      осталось не менее 30 минут\r\n" +
-                               $"                 (кроме льготных\r\n" +
-                               $"          категорий пассажиров).\r\n";
+            //ПЕЧАТЬ ЛОГОТИПА
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "Picture", "RZD_logo.jpg");
+            if (File.Exists(filePath))
+                e.Graphics.DrawImage(Image.FromFile(filePath), 5, 5);
 
-
-            Font printFont = new Font("Times New Roman", 4, FontStyle.Regular, GraphicsUnit.Millimeter);
-            e.Graphics.DrawString(printText, printFont, Brushes.Black, 0, 2);
-
-            e.Graphics.DrawLine(new Pen(Color.Black), 5, 205, 245, 205);
+            e.Graphics.DrawLine(new Pen(Color.Black), 5, 130, 245, 130);
 
             //ПЕЧАТЬ ТЕКСТА
-            printText = $"{_ticketName}\r\n";
-            printFont = new Font("Times New Roman", 20, FontStyle.Regular, GraphicsUnit.Millimeter);
-            e.Graphics.DrawString(printText, printFont, Brushes.Black, 20, 215);//9,150
+            string printText = $"{_ticketName}\r\n";
+            Font printFont = new Font("Times New Roman", 20, FontStyle.Regular, GraphicsUnit.Millimeter);
+            e.Graphics.DrawString(printText, printFont, Brushes.Black, 9, 150);
 
-            //printText = $"перед вами {_countPeople} чел.\r\n";
-            //printFont = new Font("Times New Roman", 7, FontStyle.Regular, GraphicsUnit.Millimeter);
-            //e.Graphics.DrawString(printText, printFont, Brushes.Black, 12, 310); //9,260
+            printText = $"перед вами {_countPeople} чел.\r\n";
+            printFont = new Font("Times New Roman", 7, FontStyle.Regular, GraphicsUnit.Millimeter);
+            e.Graphics.DrawString(printText, printFont, Brushes.Black, 9, 260);
 
             printText = "\r\n \r\n ";
-            printText += $"{_dateAdded.ToString("T")}            {_dateAdded.ToString("d")}";
+            printText += $"{_dateAdded.ToString("T")}         {_dateAdded.ToString("d")}";
             printFont = new Font("Times New Roman", 5, FontStyle.Regular, GraphicsUnit.Millimeter);
             e.Graphics.DrawString(printText, printFont, Brushes.Black, 5, 300);
         }

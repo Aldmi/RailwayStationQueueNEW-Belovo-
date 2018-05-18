@@ -138,11 +138,11 @@ namespace TerminalUIWpf.ViewModels
 
 
         /// <summary>
-        /// Получить справку
+        /// Купить бидеты дальнего следования
         /// </summary>
         public async Task BtnLongRoad()
         {
-            const string descriptionQueue = "Администратор / Восстановление утерянных (испорченных) билетов";
+            const string descriptionQueue = "Купить билет на поезд дальнего следования";
             const string prefixQueue = "А";
             const string nameQueue = "Main";
             await _model.QueueSelection(nameQueue, prefixQueue, descriptionQueue);
