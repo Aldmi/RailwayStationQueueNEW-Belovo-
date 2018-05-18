@@ -13,7 +13,6 @@ using System.Windows.Forms;
 using System.Windows.Media;
 using Caliburn.Micro;
 using Communication.TcpIp;
-using Library.Logs;
 using Server.Entitys;
 using Server.Model;
 using ServerUi.Model;
@@ -23,6 +22,7 @@ using Screen = Caliburn.Micro.Screen;
 using TicketItem = ServerUi.Model.TicketItem;
 using Brush = System.Windows.Media.Brush;
 using MessageBox = System.Windows.MessageBox;
+using NLog;
 
 
 namespace ServerUi.ViewModels
@@ -33,15 +33,7 @@ namespace ServerUi.ViewModels
 
         private readonly ServerModel _model;
         private readonly Task _mainTask;
-        private readonly Log _logger;
-
-        private const int LimitRowTable8X21 = 6;
-        private const int LimitRowTable8X22 = 6;
-
-        private const int LimitRowTable4X41 = 3;
-        private const int LimitRowTable4X42 = 3;
-        private const int LimitRowTable4X43 = 3;
-        private const int LimitRowTable4X44 = 3;
+        private readonly Logger _logger;
 
         private const string SettingUiNameFile = @"Settings\settingsUi.dat";
 
@@ -54,7 +46,7 @@ namespace ServerUi.ViewModels
 
         public AppViewModel()
         {
-            _logger = new Log("Server.Main");
+            _logger = NLog.LogManager.GetCurrentClassLogger();
 
             _model = new ServerModel();
             _model.PropertyChanged += _model_PropertyChanged;
@@ -62,8 +54,8 @@ namespace ServerUi.ViewModels
             _model.LoadSetting();
             foreach (var devCashier in _model.DeviceCashiers)
             {
-                devCashier.Cashier.PropertyChanged+= Cashier_PropertyChanged;
-                devCashier.PropertyChanged+= DevCashierOnPropertyChanged;
+                devCashier.Cashier.PropertyChanged += Cashier_PropertyChanged;
+                devCashier.PropertyChanged += DevCashierOnPropertyChanged;
             }
 
             if (_model.Listener != null)
@@ -76,13 +68,13 @@ namespace ServerUi.ViewModels
             _model.SoundQueue.StartQueue();
 
 
-           var queueMain= _model.QueuePriorities.FirstOrDefault(q => q.Name == "Main");
-           if (queueMain != null)
-           {
-              queueMain.PropertyChanged += QueueMain_PropertyChanged;
-           }
- 
-           _model.LoadStates();//DEBUG
+            var queueMain = _model.QueuePriorities.FirstOrDefault(q => q.Name == "Main");
+            if (queueMain != null)
+            {
+                queueMain.PropertyChanged += QueueMain_PropertyChanged;
+            }
+
+            _model.LoadStates();
 
 
 
@@ -93,18 +85,24 @@ namespace ServerUi.ViewModels
             ColorListBackground = new SolidColorBrush(Colors.CadetBlue);
             ListFontColor = new SolidColorBrush(Colors.Black);
 
-            CurrentFontCash = new FontSetting { FontHeader = null, FontRow = new Font(System.Drawing.FontFamily.GenericMonospace, 10), PaddingHeader = 0, PaddingRow = 0};
-            CurrentFont8X2 = new FontSetting  { FontHeader = new Font(System.Drawing.FontFamily.GenericMonospace, 10),
-                                               FontRow = new Font(System.Drawing.FontFamily.GenericMonospace, 10),
-                                               PaddingHeader = 0,
-                                               PaddingRow = 0 };
+            CurrentFontCash = new FontSetting { FontHeader = null, FontRow = new Font(System.Drawing.FontFamily.GenericMonospace, 10), PaddingHeader = 0, PaddingRow = 0 };
+            CurrentFont8X2 = new FontSetting
+            {
+                FontHeader = new Font(System.Drawing.FontFamily.GenericMonospace, 10),
+                FontRow = new Font(System.Drawing.FontFamily.GenericMonospace, 10),
+                PaddingHeader = 0,
+                PaddingRow = 0
+            };
 
-            CurrentFont4X4 = new FontSetting { FontHeader = new Font(System.Drawing.FontFamily.GenericMonospace, 10),
-                                               FontRow = new Font(System.Drawing.FontFamily.GenericMonospace, 10),
-                                               PaddingHeader = 0,
-                                               PaddingRow = 0 };
+            CurrentFont4X4 = new FontSetting
+            {
+                FontHeader = new Font(System.Drawing.FontFamily.GenericMonospace, 10),
+                FontRow = new Font(System.Drawing.FontFamily.GenericMonospace, 10),
+                PaddingHeader = 0,
+                PaddingRow = 0
+            };
 
-            var settingUi= LoadSettingUi();
+            var settingUi = LoadSettingUi();
             ApplySetting(settingUi);
 
 
@@ -346,19 +344,7 @@ namespace ServerUi.ViewModels
         #region ТАБЛО
 
         //ТАБЛО 4X4 - 1
-        public BindableCollection<TicketItem> Table4X41 { get; set; } = new BindableCollection<TicketItem>();
-        public BindableCollection<TicketItem> Table4X42 { get; set; } = new BindableCollection<TicketItem>();
-        public BindableCollection<TicketItem> Table4X43 { get; set; } = new BindableCollection<TicketItem>();
-        public BindableCollection<TicketItem> Table4X44 { get; set; } = new BindableCollection<TicketItem>();
-
-        //ТАБЛО 8X2 - 1
-        public BindableCollection<TicketItem> Table8X21 { get; set; } = new BindableCollection<TicketItem>();
-        public BindableCollection<TicketItem> Table8X22 { get; set; } = new BindableCollection<TicketItem>();
-
-        //ТАБЛО 8X2 - 2
-        public BindableCollection<TicketItem> Table8X23 { get; set; } = new BindableCollection<TicketItem>();
-        public BindableCollection<TicketItem> Table8X24 { get; set; } = new BindableCollection<TicketItem>();
-
+        public BindableCollection<TicketItem> TableMain { get; set; } = new BindableCollection<TicketItem>();
 
         #endregion
 
@@ -762,6 +748,7 @@ namespace ServerUi.ViewModels
 
 
 
+
         private SolidColorBrush _colorBackground = Brushes.SlateGray;
         public SolidColorBrush ColorBackground
         {
@@ -773,9 +760,7 @@ namespace ServerUi.ViewModels
             }
         }
 
-
         public BindableCollection<SoundTemplate> SoundTemplates { get; set; } = new BindableCollection<SoundTemplate>();  //Звуковые шалоны в очереди
-
         public BindableCollection<Server.Entitys.TicketItem> QueuePriority { get; set; } = new BindableCollection<Server.Entitys.TicketItem>(); //Основная очередь
 
         #endregion
@@ -804,23 +789,18 @@ namespace ServerUi.ViewModels
 
                         var ticketPrefix = ticket.TicketName.Substring(0, 1);
                         var ticketNumber = ticket.TicketName.Substring(1, 3);
-                        var formatStr= $"Талон {ticketPrefix} {ticketNumber} Касса {ticket.CashierName}";
+                        var formatStr = $"Талон {ticketPrefix} {ticketNumber} Касса {ticket.CashierName}";
                         _model.SoundQueue.AddItem(new SoundTemplate(formatStr));
 
-                        FillTableCashier(сashier.Id, ticket);
-                        FillTable4X4(ticket, Table4X41, Table4X42, Table4X43, Table4X44);
-                        FillTable8X2(ticket, Table8X21, Table8X22);
-                        FillTable8X2(ticket, Table8X23, Table8X24);
+
+                        FillTable(ticket, TableMain);
 
                         //LOG
                         _logger.Info(сashier.CurrentTicket.ToString());
                     }
                     else                                 //удалить элемент из списка
                     {
-                        FillTableCashier(сashier.Id, null);
-                        ClearTable4X4(сashier.Id, Table4X41, Table4X42, Table4X43, Table4X44);
-                        ClearTable8X2(сashier.Id, Table8X21, Table8X22);
-                        ClearTable8X2(сashier.Id, Table8X23, Table8X24);
+                        ClearTable(сashier.Id, TableMain);
                     }
                 }
             }
@@ -841,7 +821,7 @@ namespace ServerUi.ViewModels
                     switch (deviceCashier.Cashier.Id)
                     {
                         case 1:
-                            ColorBackgroundCashierTicket1 = deviceCashier.IsConnect ? Brushes.Green : Brushes.SlateGray;               
+                            ColorBackgroundCashierTicket1 = deviceCashier.IsConnect ? Brushes.Green : Brushes.SlateGray;
                             break;
 
                         case 2:
@@ -1039,17 +1019,17 @@ namespace ServerUi.ViewModels
                 else
                 if (e.PropertyName == "GetClients")
                 {
-                  var ipTcpClients=  listener.GetClients.Select(c=>c.Ip).ToList();
-                  TerminalsIp.Clear();
-                  TerminalsIp.AddRange(ipTcpClients);
+                    var ipTcpClients = listener.GetClients.Select(c => c.Ip).ToList();
+                    TerminalsIp.Clear();
+                    TerminalsIp.AddRange(ipTcpClients);
 
-                  //LOG
-                  var strb = new StringBuilder("Терминалы на свзяи: ");
-                  foreach (var c in ipTcpClients)
-                  {
-                     strb.Append(c).Append("; ");
-                  }
-                  _logger.Debug(strb.ToString());
+                    //LOG
+                    var strb = new StringBuilder("Терминалы на свзяи: ");
+                    foreach (var c in ipTcpClients)
+                    {
+                        strb.Append(c).Append("; ");
+                    }
+                    _logger.Debug(strb);
                 }
             }
         }
@@ -1074,213 +1054,26 @@ namespace ServerUi.ViewModels
 
 
         #region Methode
+
         /// <summary>
-        /// Заполнить табло кассиров
+        /// Заполнить главное табло
         /// </summary>
-        private void FillTableCashier(int cashierId, TicketItem item)
+        private void FillTable(TicketItem item, IList<TicketItem> list1)
         {
-            switch (cashierId)
-            {
-                case 1:
-                    CashierTicket1 = item;
-                    break;
-
-                case 2:
-                    CashierTicket2 = item;
-                    break;
-
-                case 3:
-                    CashierTicket3 = item;
-                    break;
-
-                case 4:
-                    CashierTicket4 = item;
-                    break;
-
-                case 5:
-                    CashierTicket5 = item;
-                    break;
-
-                case 6:
-                    CashierTicket6 = item;
-                    break;
-
-                case 7:
-                    CashierTicket7 = item;
-                    break;
-
-                case 8:
-                    CashierTicket8 = item;
-                    break;
-
-                case 9:
-                    CashierTicket9 = item;
-                    break;
-
-                case 10:
-                    CashierTicket10 = item;
-                    break;
-
-                case 11:
-                    CashierTicket11 = item;
-                    break;
-
-                case 12:
-                    CashierTicket12 = item;
-                    break;
-
-                case 13:
-                    CashierTicket13 = item;
-                    break;
-
-                case 14:
-                    CashierTicket14 = item;
-                    break;
-
-                case 15:
-                    CashierTicket15 = item;
-                    break;
-
-                case 16:
-                    CashierTicket16 = item;
-                    break;
-
-                case 17:
-                    CashierTicket17 = item;
-                    break;
-            }
+            list1.Add(item);
         }
 
 
         /// <summary>
-        /// Заполнить табло 4x4
+        /// Очистить главное табло
         /// </summary>
-        private void FillTable4X4(TicketItem item, IList<TicketItem> list1, IList<TicketItem> list2, IList<TicketItem> list3, IList<TicketItem> list4)
+        private void ClearTable(int removeTicketId, IList<TicketItem> list1)
         {
-            if (list1.Count < LimitRowTable4X41)
-            {
-                list1.Add(item);
-            }
-            else
-            if (list2.Count < LimitRowTable4X42)
-            {
-                list2.Add(item);
-            }
-            else
-            if (list3.Count < LimitRowTable4X43)
-            {
-                list3.Add(item);
-            }
-            else
-            if (list4.Count < LimitRowTable4X44)
-            {
-                list4.Add(item);
-            }
-        }
-
-
-        /// <summary>
-        /// Очистить табло 4x4
-        /// </summary>
-        private void ClearTable4X4(int removeTicketId, IList<TicketItem> list1, IList<TicketItem> list2, IList<TicketItem> list3, IList<TicketItem> list4)
-        {
-            bool isDelete = false;
-
             // Удалить элемент из нужного списка
             var removeTicket = list1.FirstOrDefault(elem => elem.CashierId == removeTicketId);
             if (removeTicket != null)
             {
                 list1.Remove(removeTicket);
-                isDelete = true;
-            }
-           
-            removeTicket = list2.FirstOrDefault(elem => elem.CashierId == removeTicketId);
-            if (removeTicket != null)
-            {
-                list2.Remove(removeTicket);
-                isDelete = true;
-            }
-           
-            removeTicket = list3.FirstOrDefault(elem => elem.CashierId == removeTicketId);
-            if (removeTicket != null)
-            {
-                list3.Remove(removeTicket);
-                isDelete = true;
-            }
-
-            removeTicket = list4.FirstOrDefault(elem => elem.CashierId == removeTicketId);
-            if (removeTicket != null)
-            {            
-                list4.Remove(removeTicket);
-                isDelete = true;
-            }
-
-            //Перезаполнить список, если элемент был удален
-            if (isDelete)
-            {
-                var sumList = list1.Union(list2).Union(list3).Union(list4).ToList();
-                list1.Clear();
-                list2.Clear();
-                list3.Clear();
-                list4.Clear();
-                foreach (var item in sumList)
-                {
-                    FillTable4X4(item, list1, list2, list3, list4);
-                }
-            }
-
-        }
-
-
-        /// <summary>
-        /// Заполнить табло 8x2
-        /// </summary>
-        private void FillTable8X2(TicketItem item, IList<TicketItem> list1, IList<TicketItem> list2)
-        {
-            if (list1.Count < LimitRowTable8X21) 
-            {
-                list1.Add(item);
-            }
-            else
-            if (list2.Count < LimitRowTable8X22)
-            {
-                list2.Add(item);
-            }
-        }
-
-
-        /// <summary>
-        /// Очистить табло 4x4
-        /// </summary>
-        private void ClearTable8X2(int removeTicketId, IList<TicketItem> list1, IList<TicketItem> list2)
-        {
-            bool isDelete = false;
-
-            // Удалить элемент из нужного списка
-            var removeTicket = list1.FirstOrDefault(elem => elem.CashierId == removeTicketId);
-            if (removeTicket != null)
-            {
-                list1.Remove(removeTicket);
-                isDelete = true;
-            }
-
-            removeTicket = list2.FirstOrDefault(elem => elem.CashierId == removeTicketId);
-            if (removeTicket != null)
-            {
-                list2.Remove(removeTicket);
-                isDelete = true;
-            }
-
-            //Перезаполнить список, если элемент был удален
-            if (isDelete)
-            {            
-                var sumList = list1.Union(list2).ToList();
-                list1.Clear();
-                list2.Clear();
-                foreach (var item in sumList)
-                {
-                    FillTable8X2(item, list1, list2);
-                }
             }
         }
 
@@ -1325,7 +1118,7 @@ namespace ServerUi.ViewModels
 
         //Цвет фона заголовка
         private Brush _headerBackgroundColor;
-        public Brush HeaderBackgroundColor 
+        public Brush HeaderBackgroundColor
         {
             get { return _headerBackgroundColor; }
             set
@@ -1464,7 +1257,7 @@ namespace ServerUi.ViewModels
                         break;
 
                     case "8X2 шрифт заголовка":
-                        CurrentFont8X2.FontHeader= currentFont;
+                        CurrentFont8X2.FontHeader = currentFont;
                         break;
 
                     case "8X2 шрифт строк":
@@ -1486,6 +1279,15 @@ namespace ServerUi.ViewModels
 
         public void SaveTableSetting()
         {
+            //DEBUG---------------------------------
+            //for (int i = 0; i < 99; i++)
+            //{
+            //    Add(14);
+            //    Task.Delay(100).GetAwaiter();
+            //    Dell(14);
+            //}
+            //DEBUG---------------------------------
+
             SaveSettingUi();
         }
 
@@ -1566,16 +1368,6 @@ namespace ServerUi.ViewModels
 
         protected override void OnDeactivate(bool close)
         {
-            _model.PropertyChanged -= _model_PropertyChanged;
-            foreach (var devCashier in _model.DeviceCashiers)
-            {
-                devCashier.Cashier.PropertyChanged -= Cashier_PropertyChanged;
-                devCashier.PropertyChanged -= DevCashierOnPropertyChanged;
-            }
-            _model.Listener.PropertyChanged -= Listener_PropertyChanged;
-            _model.SoundQueue.PropertyChanged -= SoundQueue_PropertyChanged;
-
-
             _model.Dispose();
             base.OnDeactivate(close);
         }
@@ -1589,16 +1381,14 @@ namespace ServerUi.ViewModels
 
         public void Add(int idCashier)
         {
-            _model.DeviceCashiers[idCashier-1].Cashier.StartHandling();
-            _model.DeviceCashiers[idCashier-1].Cashier.SuccessfulStartHandling();
+            _model.DeviceCashiers[idCashier - 1].Cashier.StartHandling();
+            _model.DeviceCashiers[idCashier - 1].Cashier.SuccessfulStartHandling();
         }
 
 
         public void Dell(int idCashier)
         {
-            //_model.DeviceCashiers[idCashier - 1].Cashier.SuccessfulHandling();
-
-            _model.DeviceCashiers[idCashier - 1].Cashier.ErrorHandling();
+            _model.DeviceCashiers[idCashier - 1].Cashier.SuccessfulHandling();
         }
 
 

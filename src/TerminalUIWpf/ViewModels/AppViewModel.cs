@@ -1,12 +1,10 @@
-﻿using System;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using Caliburn.Micro;
 using Communication.TcpIp;
 using Terminal.Model;
-using Terminal.Service;
 
 
 namespace TerminalUIWpf.ViewModels
@@ -125,10 +123,11 @@ namespace TerminalUIWpf.ViewModels
 
         private bool _model_ConfirmationAdded(string ticketName, string countPeople, string description)
         {
-            var dialog = new DialogViewModel(_windowManager) { CountPeople = $"Впереди вас {countPeople} человек", TicketName = $"Номер вашего талона {ticketName}", Description = description};
+            var dialog = new DialogViewModel(_windowManager) { CountPeople = $"Впереди вас {countPeople} человек", TicketName = $"Номер вашего талона {ticketName}", Description = description };
             _windowManager.ShowDialog(dialog);
             return dialog.Act == Act.Ok;
         }
+
 
         #endregion
 
@@ -137,73 +136,17 @@ namespace TerminalUIWpf.ViewModels
 
         #region Methode
 
-        /// <summary>
-        /// Открыть окно покупки билетов
-        /// </summary>
-        public void BtnBuyTicket()
-        {
-            if(!_model.IsConnectTcpIp)
-                return;
-
-            var dialog = new BuyTicketViewModel(_model);
-            _windowManager.ShowDialog(dialog);
-        }
 
         /// <summary>
         /// Получить справку
         /// </summary>
-        public async Task BtnGetHelp()
-        {
-            var printerStat = _model.PrintTicket.GetPrinterStatus();
-            switch (printerStat)
-            {
-                case PrinterStatus.Ok:
-                    break;
-
-                case PrinterStatus.QueueContainsElements:
-                    MessageBox.Show("Очередь печати ПЕРЕПОЛНЕННА");
-                    return;
-           
-                case PrinterStatus.IsInError:
-                    return;
-
-                case PrinterStatus.IsOutOfPaper:
-                    return;
-
-                case PrinterStatus.IsPaperJammed:
-                    return;
-             }
-
-            const string descriptionQueue = "Получить справку";
-            const string prefixQueue = "С";
-            const string nameQueue = "Main";
-            await _model.QueueSelection(nameQueue, prefixQueue, descriptionQueue);
-        }
-
-        /// <summary>
-        /// Оформить багаж
-        /// </summary>
-        //public async Task BtnBaggageCheckout()
-        //{
-        //    const string descriptionQueue = "Оформить багаж";
-        //    const string prefixQueue = "Б";
-        //    const string nameQueue = "Main";
-        //    await _model.QueueSelection(nameQueue, prefixQueue, descriptionQueue);
-        //}
-
-        /// <summary>
-        /// Администратор
-        /// </summary>
-        public async Task BtnAdmin()
+        public async Task BtnLongRoad()
         {
             const string descriptionQueue = "Администратор / Восстановление утерянных (испорченных) билетов";
             const string prefixQueue = "А";
-            const string nameQueue = "Admin";
+            const string nameQueue = "Main";
             await _model.QueueSelection(nameQueue, prefixQueue, descriptionQueue);
         }
-
-
-
 
 
 
