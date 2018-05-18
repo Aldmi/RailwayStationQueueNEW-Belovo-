@@ -1,90 +1,89 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+using NLog;
+using NLog.Config;
 
 namespace Library.Logs
 {
-    /// <summary>
-    /// Записывет список строк порциями в файл на диск.
-    /// При превышении кол-ва порция файл пишется с 0 позиции.
-    /// Старые данные сохраняются ниже.
-    /// </summary>
-    public class Log
+    public class Log : IDisposable
     {
-        private readonly string _path;
-        private readonly int _portionString;              // порция строк для записи
-        private readonly int _countPortion;               // количесво порций строк в файле. При превышении файл перезаписывается с 0 порции.
-
-
-        private List<string> List { get; set; } = new List<string>();
-        public int Seek { get; set; }
+        private readonly Logger _logger;
+        private static bool _isEnable;
 
 
 
 
-        public Log(string filename, int portionString, int countPortion)
+
+        #region ctor
+
+        public Log(string nameLog)
         {
-            _path = Path.Combine(Directory.GetCurrentDirectory() , $"Logs\\{filename}");
-            _portionString = portionString;
-            _countPortion = countPortion;
+            var pathConfigFile = Path.Combine(Directory.GetCurrentDirectory(), "NLog.config");
+            if (!File.Exists(pathConfigFile))
+            {
+                throw new FileNotFoundException($"Не найден файл конфигурации лога по пути: {pathConfigFile}");
+            }
+ 
+              LogManager.Configuration = new XmlLoggingConfiguration(pathConfigFile);
+              _logger = LogManager.GetLogger(nameLog);          
         }
 
-        //public Log(string filename, XmlLogSettings settings) : this(filename, settings.PortionString, settings.CountPortion)
-        //{ 
-        //}
+        #endregion
 
 
 
+        #region Methode
 
-        public async Task Add(string str)
+        public static void EnableLogging(bool enable)
         {
-            if(string.IsNullOrEmpty(str))
+            _isEnable = enable;
+        }
+
+
+        public void Info(string message)
+        {
+            if(!_isEnable)
                 return;
 
-            List.Add(str);
-
-            if (List.Count >= _portionString)
-            {
-                await WriteBufferString();
-                List.Clear();
-            }
+            _logger.Info(message);
         }
 
-        private async Task WriteBufferString()
+        public void Debug(string message)
         {
-            try
-            {
-                await Task.Factory.StartNew(() =>
-                {
-                   
-                    if (!File.Exists(_path))
-                        File.Create(_path);
+            if (!_isEnable)
+                return;
 
-                    int buffSize = _portionString * _countPortion;
-                    string[] buffString = new string[buffSize];
-
-                    var readedString = File.ReadAllLines(_path);
-                    Array.Copy(readedString, buffString, readedString.Length);
-
-                    var count= readedString.Count(str => str.Length>1);//DEBUG
-                    if (count < buffSize)
-                    {
-                        Seek = count;
-                    }
-                    Array.Copy(List.ToArray(), 0, buffString, Seek, _portionString);
-                    if ((Seek += _portionString) > (buffSize - _portionString) || readedString.Length > buffSize)
-                        Seek = 0;
-
-                    File.WriteAllLines(_path, buffString);
-                    
-                });
-            }
-            catch (Exception ex)
-            {  
-                //не обработанное исключение        
-            }
+            _logger.Debug(message);
         }
+
+        public void Error(string message)
+        {
+            if (!_isEnable)
+                return;
+
+            _logger.Error(message);
+        }
+
+        public void Fatal(string message)
+        {
+            if (!_isEnable)
+                return;
+
+            _logger.Fatal(message);
+        }
+
+        #endregion
+
+
+
+
+        #region Dispose
+
+        public void Dispose()
+        {
+            LogManager.DisableLogging().Dispose();
+        }
+
+        #endregion
     }
 }

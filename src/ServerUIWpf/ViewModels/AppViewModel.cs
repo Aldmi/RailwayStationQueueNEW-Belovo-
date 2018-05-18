@@ -13,6 +13,7 @@ using System.Windows.Forms;
 using System.Windows.Media;
 using Caliburn.Micro;
 using Communication.TcpIp;
+using Library.Logs;
 using Server.Entitys;
 using Server.Model;
 using ServerUi.Model;
@@ -22,7 +23,6 @@ using Screen = Caliburn.Micro.Screen;
 using TicketItem = ServerUi.Model.TicketItem;
 using Brush = System.Windows.Media.Brush;
 using MessageBox = System.Windows.MessageBox;
-using NLog;
 
 
 namespace ServerUi.ViewModels
@@ -33,7 +33,15 @@ namespace ServerUi.ViewModels
 
         private readonly ServerModel _model;
         private readonly Task _mainTask;
-        private readonly Logger _logger;
+        private readonly Log _logger;
+
+        private const int LimitRowTable8X21 = 6;
+        private const int LimitRowTable8X22 = 6;
+
+        private const int LimitRowTable4X41 = 3;
+        private const int LimitRowTable4X42 = 3;
+        private const int LimitRowTable4X43 = 3;
+        private const int LimitRowTable4X44 = 3;
 
         private const string SettingUiNameFile = @"Settings\settingsUi.dat";
 
@@ -46,7 +54,7 @@ namespace ServerUi.ViewModels
 
         public AppViewModel()
         {
-            _logger = NLog.LogManager.GetCurrentClassLogger();
+            _logger = new Log("Server.Main");
 
             _model = new ServerModel();
             _model.PropertyChanged += _model_PropertyChanged;
@@ -74,7 +82,7 @@ namespace ServerUi.ViewModels
               queueMain.PropertyChanged += QueueMain_PropertyChanged;
            }
  
-           _model.LoadStates();
+           _model.LoadStates();//DEBUG
 
 
 
@@ -338,7 +346,19 @@ namespace ServerUi.ViewModels
         #region ТАБЛО
 
         //ТАБЛО 4X4 - 1
-        public BindableCollection<TicketItem> TableMain { get; set; } = new BindableCollection<TicketItem>();
+        public BindableCollection<TicketItem> Table4X41 { get; set; } = new BindableCollection<TicketItem>();
+        public BindableCollection<TicketItem> Table4X42 { get; set; } = new BindableCollection<TicketItem>();
+        public BindableCollection<TicketItem> Table4X43 { get; set; } = new BindableCollection<TicketItem>();
+        public BindableCollection<TicketItem> Table4X44 { get; set; } = new BindableCollection<TicketItem>();
+
+        //ТАБЛО 8X2 - 1
+        public BindableCollection<TicketItem> Table8X21 { get; set; } = new BindableCollection<TicketItem>();
+        public BindableCollection<TicketItem> Table8X22 { get; set; } = new BindableCollection<TicketItem>();
+
+        //ТАБЛО 8X2 - 2
+        public BindableCollection<TicketItem> Table8X23 { get; set; } = new BindableCollection<TicketItem>();
+        public BindableCollection<TicketItem> Table8X24 { get; set; } = new BindableCollection<TicketItem>();
+
 
         #endregion
 
@@ -742,7 +762,6 @@ namespace ServerUi.ViewModels
 
 
 
-
         private SolidColorBrush _colorBackground = Brushes.SlateGray;
         public SolidColorBrush ColorBackground
         {
@@ -754,7 +773,9 @@ namespace ServerUi.ViewModels
             }
         }
 
+
         public BindableCollection<SoundTemplate> SoundTemplates { get; set; } = new BindableCollection<SoundTemplate>();  //Звуковые шалоны в очереди
+
         public BindableCollection<Server.Entitys.TicketItem> QueuePriority { get; set; } = new BindableCollection<Server.Entitys.TicketItem>(); //Основная очередь
 
         #endregion
@@ -777,24 +798,29 @@ namespace ServerUi.ViewModels
                         var ticket = new TicketItem
                         {
                             CashierId = сashier.Id,
-                            CashierName = сashier.CurrentTicket.Сashbox.ToString(),
+                            CashierName = сashier.CurrentTicket.Cashbox.ToString(),
                             TicketName = $"{сashier.CurrentTicket.Prefix}{сashier.CurrentTicket.NumberElement:000}",
                         };
 
                         var ticketPrefix = ticket.TicketName.Substring(0, 1);
                         var ticketNumber = ticket.TicketName.Substring(1, 3);
-                        var formatStr = $"Талон {ticketPrefix} {ticketNumber} Касса {ticket.CashierName}";
+                        var formatStr= $"Талон {ticketPrefix} {ticketNumber} Касса {ticket.CashierName}";
                         _model.SoundQueue.AddItem(new SoundTemplate(formatStr));
 
-
-                        FillTable(ticket, TableMain);
+                        FillTableCashier(сashier.Id, ticket);
+                        FillTable4X4(ticket, Table4X41, Table4X42, Table4X43, Table4X44);
+                        FillTable8X2(ticket, Table8X21, Table8X22);
+                        FillTable8X2(ticket, Table8X23, Table8X24);
 
                         //LOG
                         _logger.Info(сashier.CurrentTicket.ToString());
                     }
                     else                                 //удалить элемент из списка
-                    {             
-                        ClearTable(сashier.Id, TableMain);
+                    {
+                        FillTableCashier(сashier.Id, null);
+                        ClearTable4X4(сashier.Id, Table4X41, Table4X42, Table4X43, Table4X44);
+                        ClearTable8X2(сashier.Id, Table8X21, Table8X22);
+                        ClearTable8X2(сashier.Id, Table8X23, Table8X24);
                     }
                 }
             }
@@ -1023,7 +1049,7 @@ namespace ServerUi.ViewModels
                   {
                      strb.Append(c).Append("; ");
                   }
-                  _logger.Debug(strb);
+                  _logger.Debug(strb.ToString());
                 }
             }
         }
@@ -1048,26 +1074,213 @@ namespace ServerUi.ViewModels
 
 
         #region Methode
-    
         /// <summary>
-        /// Заполнить главное табло
+        /// Заполнить табло кассиров
         /// </summary>
-        private void FillTable(TicketItem item, IList<TicketItem> list1)
+        private void FillTableCashier(int cashierId, TicketItem item)
         {
-          list1.Add(item);
+            switch (cashierId)
+            {
+                case 1:
+                    CashierTicket1 = item;
+                    break;
+
+                case 2:
+                    CashierTicket2 = item;
+                    break;
+
+                case 3:
+                    CashierTicket3 = item;
+                    break;
+
+                case 4:
+                    CashierTicket4 = item;
+                    break;
+
+                case 5:
+                    CashierTicket5 = item;
+                    break;
+
+                case 6:
+                    CashierTicket6 = item;
+                    break;
+
+                case 7:
+                    CashierTicket7 = item;
+                    break;
+
+                case 8:
+                    CashierTicket8 = item;
+                    break;
+
+                case 9:
+                    CashierTicket9 = item;
+                    break;
+
+                case 10:
+                    CashierTicket10 = item;
+                    break;
+
+                case 11:
+                    CashierTicket11 = item;
+                    break;
+
+                case 12:
+                    CashierTicket12 = item;
+                    break;
+
+                case 13:
+                    CashierTicket13 = item;
+                    break;
+
+                case 14:
+                    CashierTicket14 = item;
+                    break;
+
+                case 15:
+                    CashierTicket15 = item;
+                    break;
+
+                case 16:
+                    CashierTicket16 = item;
+                    break;
+
+                case 17:
+                    CashierTicket17 = item;
+                    break;
+            }
         }
 
 
         /// <summary>
-        /// Очистить главное табло
+        /// Заполнить табло 4x4
         /// </summary>
-        private void ClearTable(int removeTicketId, IList<TicketItem> list1)
+        private void FillTable4X4(TicketItem item, IList<TicketItem> list1, IList<TicketItem> list2, IList<TicketItem> list3, IList<TicketItem> list4)
         {
+            if (list1.Count < LimitRowTable4X41)
+            {
+                list1.Add(item);
+            }
+            else
+            if (list2.Count < LimitRowTable4X42)
+            {
+                list2.Add(item);
+            }
+            else
+            if (list3.Count < LimitRowTable4X43)
+            {
+                list3.Add(item);
+            }
+            else
+            if (list4.Count < LimitRowTable4X44)
+            {
+                list4.Add(item);
+            }
+        }
+
+
+        /// <summary>
+        /// Очистить табло 4x4
+        /// </summary>
+        private void ClearTable4X4(int removeTicketId, IList<TicketItem> list1, IList<TicketItem> list2, IList<TicketItem> list3, IList<TicketItem> list4)
+        {
+            bool isDelete = false;
+
             // Удалить элемент из нужного списка
             var removeTicket = list1.FirstOrDefault(elem => elem.CashierId == removeTicketId);
             if (removeTicket != null)
             {
                 list1.Remove(removeTicket);
+                isDelete = true;
+            }
+           
+            removeTicket = list2.FirstOrDefault(elem => elem.CashierId == removeTicketId);
+            if (removeTicket != null)
+            {
+                list2.Remove(removeTicket);
+                isDelete = true;
+            }
+           
+            removeTicket = list3.FirstOrDefault(elem => elem.CashierId == removeTicketId);
+            if (removeTicket != null)
+            {
+                list3.Remove(removeTicket);
+                isDelete = true;
+            }
+
+            removeTicket = list4.FirstOrDefault(elem => elem.CashierId == removeTicketId);
+            if (removeTicket != null)
+            {            
+                list4.Remove(removeTicket);
+                isDelete = true;
+            }
+
+            //Перезаполнить список, если элемент был удален
+            if (isDelete)
+            {
+                var sumList = list1.Union(list2).Union(list3).Union(list4).ToList();
+                list1.Clear();
+                list2.Clear();
+                list3.Clear();
+                list4.Clear();
+                foreach (var item in sumList)
+                {
+                    FillTable4X4(item, list1, list2, list3, list4);
+                }
+            }
+
+        }
+
+
+        /// <summary>
+        /// Заполнить табло 8x2
+        /// </summary>
+        private void FillTable8X2(TicketItem item, IList<TicketItem> list1, IList<TicketItem> list2)
+        {
+            if (list1.Count < LimitRowTable8X21) 
+            {
+                list1.Add(item);
+            }
+            else
+            if (list2.Count < LimitRowTable8X22)
+            {
+                list2.Add(item);
+            }
+        }
+
+
+        /// <summary>
+        /// Очистить табло 4x4
+        /// </summary>
+        private void ClearTable8X2(int removeTicketId, IList<TicketItem> list1, IList<TicketItem> list2)
+        {
+            bool isDelete = false;
+
+            // Удалить элемент из нужного списка
+            var removeTicket = list1.FirstOrDefault(elem => elem.CashierId == removeTicketId);
+            if (removeTicket != null)
+            {
+                list1.Remove(removeTicket);
+                isDelete = true;
+            }
+
+            removeTicket = list2.FirstOrDefault(elem => elem.CashierId == removeTicketId);
+            if (removeTicket != null)
+            {
+                list2.Remove(removeTicket);
+                isDelete = true;
+            }
+
+            //Перезаполнить список, если элемент был удален
+            if (isDelete)
+            {            
+                var sumList = list1.Union(list2).ToList();
+                list1.Clear();
+                list2.Clear();
+                foreach (var item in sumList)
+                {
+                    FillTable8X2(item, list1, list2);
+                }
             }
         }
 
@@ -1273,15 +1486,6 @@ namespace ServerUi.ViewModels
 
         public void SaveTableSetting()
         {
-            //DEBUG---------------------------------
-            //for (int i = 0; i < 99; i++)
-            //{
-            //    Add(14);
-            //    Task.Delay(100).GetAwaiter();
-            //    Dell(14);
-            //}
-            //DEBUG---------------------------------
-
             SaveSettingUi();
         }
 
@@ -1362,6 +1566,16 @@ namespace ServerUi.ViewModels
 
         protected override void OnDeactivate(bool close)
         {
+            _model.PropertyChanged -= _model_PropertyChanged;
+            foreach (var devCashier in _model.DeviceCashiers)
+            {
+                devCashier.Cashier.PropertyChanged -= Cashier_PropertyChanged;
+                devCashier.PropertyChanged -= DevCashierOnPropertyChanged;
+            }
+            _model.Listener.PropertyChanged -= Listener_PropertyChanged;
+            _model.SoundQueue.PropertyChanged -= SoundQueue_PropertyChanged;
+
+
             _model.Dispose();
             base.OnDeactivate(close);
         }
@@ -1382,7 +1596,9 @@ namespace ServerUi.ViewModels
 
         public void Dell(int idCashier)
         {
-            _model.DeviceCashiers[idCashier - 1].Cashier.SuccessfulHandling();
+            //_model.DeviceCashiers[idCashier - 1].Cashier.SuccessfulHandling();
+
+            _model.DeviceCashiers[idCashier - 1].Cashier.ErrorHandling();
         }
 
 
@@ -1390,7 +1606,7 @@ namespace ServerUi.ViewModels
         {
             if (_model.AdminCasher != null)
             {
-                var redirectTicket= _model.DeviceCashiers[idCashier - 1].Cashier.CurrentTicket;
+                var redirectTicket = _model.DeviceCashiers[idCashier - 1].Cashier.CurrentTicket;
                 if (redirectTicket != null)
                 {
                     _model.AdminCasher.Cashier.AddRedirectedTicket(redirectTicket);

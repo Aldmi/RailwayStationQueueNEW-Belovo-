@@ -29,11 +29,12 @@ namespace Server.Model
 {
     public class ServerModel : INotifyPropertyChanged, IDisposable
     {
+        private readonly Log _logQueueInput = new Log("Server.QueueInput"); // лог информация поступления данных от терминала.
+
+
         #region prop
 
         public List<QueuePriority> QueuePriorities { get; set; }= new List<QueuePriority>();
-
-        public Log LogTicket { get; set; }
 
         public ListenerTcpIp Listener { get; set; }
         public IExchangeDataProvider<TerminalInData, TerminalOutData> ProviderTerminal { get; set; }
@@ -48,6 +49,7 @@ namespace Server.Model
         public List<Task> BackGroundTasks { get; } = new List<Task>();
 
         private string _errorString;
+
         public string ErrorString
         {
             get { return _errorString; }
@@ -58,6 +60,8 @@ namespace Server.Model
                 OnPropertyChanged();
             }
         }
+
+
 
         #endregion
 
@@ -109,7 +113,9 @@ namespace Server.Model
                 return;
             }
 
-       
+            //РАЗРЕШИТЬ ЛОГГИРОВАНИЕ-----------------------------------------------------------
+            Log.EnableLogging(true);
+
             //СОЗДАНИЕ ОЧЕРЕДИ-----------------------------------------------------------------------
             foreach (var xmlQueue in xmlQueues)
             {
@@ -120,7 +126,7 @@ namespace Server.Model
 
             //СОЗДАНИЕ СЛУШАТЕЛЯ ДЛЯ ТЕРМИНАЛОВ-------------------------------------------------------
             Listener = new ListenerTcpIp(xmlListener);
-            ProviderTerminal = new Server2TerminalExchangeDataProvider();
+            ProviderTerminal = new Server2TerminalExchangeDataProvider(isSynchronized:true);
             ProviderTerminal.PropertyChanged += (o, e) =>
             {
                 var provider = o as Server2TerminalExchangeDataProvider;
@@ -128,81 +134,73 @@ namespace Server.Model
                 {
                     if (e.PropertyName == "InputData")
                     {
-                        provider.OutputData = provider.OutputData ?? new TerminalOutData();
-
-                        //Найдем очередь к которой обращен запрос
-                        var prefixQueue = provider.InputData.PrefixQueue;
-                        var nameQueue = provider.InputData.NameQueue;
-                        var queue= QueuePriorities.FirstOrDefault(q => string.Equals(q.Name, nameQueue, StringComparison.InvariantCultureIgnoreCase));
-
-                        if (queue == null)
-                           return;
-
-                        switch (provider.InputData.Action)
+                        try
                         {
-                            //ИНФОРМАЦИЯ ОБ ОЧЕРЕДИ
-                            case TerminalAction.Info:
-                                provider.OutputData.PrefixQueue = provider.InputData.PrefixQueue;
-                                provider.OutputData.CountElement = (ushort)queue.GetInseartPlace(prefixQueue);
-                                provider.OutputData.NumberElement = (ushort)(queue.GetCurrentTicketNumber + 1);
-                                provider.OutputData.AddedTime = DateTime.Now;
-                                break;
+                            provider.OutputData = provider.OutputData ?? new TerminalOutData();
 
-                            //ДОБАВИТЬ БИЛЕТ В ОЧЕРЕДЬ
-                            case TerminalAction.Add:
-                                var ticket = queue.CreateTicket(prefixQueue);
+                            //Найдем очередь к которой обращен запрос
+                            var prefixQueue = provider.InputData.PrefixQueue;
+                            var nameQueue = provider.InputData.NameQueue;
+                            var queue = QueuePriorities.FirstOrDefault(q => string.Equals(q.Name, nameQueue, StringComparison.InvariantCultureIgnoreCase));
 
-                                provider.OutputData.PrefixQueue = provider.InputData.PrefixQueue;
-                                provider.OutputData.CountElement = ticket.CountElement;
-                                provider.OutputData.NumberElement = (ushort)ticket.NumberElement;
-                                provider.OutputData.AddedTime = ticket.AddedTime;
+                            if (queue == null)
+                                return;
 
-                                queue.Enqueue(ticket);
-                                break;
+                            switch (provider.InputData.Action)
+                            {
+                                //ИНФОРМАЦИЯ ОБ ОЧЕРЕДИ
+                                case TerminalAction.Info:
+                                    provider.OutputData.PrefixQueue = provider.InputData.PrefixQueue;
+                                    provider.OutputData.CountElement = (ushort)queue.GetInseartPlace(prefixQueue);
+                                    provider.OutputData.NumberElement = (ushort)(queue.GetCurrentTicketNumber + 1);
+                                    provider.OutputData.AddedTime = DateTime.Now;
+                                    break;
+
+                                //ДОБАВИТЬ БИЛЕТ В ОЧЕРЕДЬ
+                                case TerminalAction.Add:
+                                    var ticket = queue.CreateTicket(prefixQueue);
+
+                                    provider.OutputData.PrefixQueue = provider.InputData.PrefixQueue;
+                                    provider.OutputData.CountElement = ticket.CountElement;
+                                    provider.OutputData.NumberElement = (ushort)ticket.NumberElement;
+                                    provider.OutputData.AddedTime = ticket.AddedTime;
+                                    queue.Enqueue(ticket);
+                                    var logMessage = $"ДОБАВИТЬ БИЛЕТ В ОЧЕРЕДЬ (команда от терминала): {ticket.ToString()}   ";
+                                    _logQueueInput.Info(logMessage);
+                                    break;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logQueueInput.Error($"Server2TerminalExchangeDataProvider:   {ex.ToString()}");
                         }
                     }
                 }
             };
 
             //DEBUG------ИНИЦИАЛИЗАЦИЯ ОЧЕРЕДИ---------------------
-            //var queueTemp = QueuePriorities.FirstOrDefault(q => string.Equals(q.Name, "Main", StringComparison.InvariantCultureIgnoreCase));
-            //var queueAdmin = QueuePriorities.FirstOrDefault(q => string.Equals(q.Name, "Admin", StringComparison.InvariantCultureIgnoreCase));
-            //for (int i = 0; i < 5; i++)
-            //{
-            //    var ticketAdmin = queueTemp.CreateTicket("А");
-            //    //queueAdmin.Enqueue(ticketAdmin);
+            var queueTemp = QueuePriorities.FirstOrDefault(q => string.Equals(q.Name, "Main", StringComparison.InvariantCultureIgnoreCase));
+            var queueAdmin = QueuePriorities.FirstOrDefault(q => string.Equals(q.Name, "Admin", StringComparison.InvariantCultureIgnoreCase));
+            for (int i = 0; i < 200; i++)
+            {
+                //var ticketAdmin = queueTemp.CreateTicket("А");
+                //queueAdmin.Enqueue(ticketAdmin);
 
+                var ticket = queueTemp.CreateTicket("К");
+                queueTemp.Enqueue(ticket);
 
-            //    var ticket = queueTemp.CreateTicket("К");
-            //    queueTemp.Enqueue(ticket);
+                ticket = queueTemp.CreateTicket("К");
+                queueTemp.Enqueue(ticket);
 
-            //    ticket = queueTemp.CreateTicket("М");
-            //    queueTemp.Enqueue(ticket);
+                ticket = queueTemp.CreateTicket("Г");
+                queueTemp.Enqueue(ticket);
 
-            //    ticket = queueTemp.CreateTicket("Г");
-            //    queueTemp.Enqueue(ticket);
+                ticket = queueTemp.CreateTicket("И");
+                queueTemp.Enqueue(ticket);
 
-            //    ticket = queueTemp.CreateTicket("И");
-            //    queueTemp.Enqueue(ticket);
-
-            //    ticket = queueTemp.CreateTicket("В");
-            //    queueTemp.Enqueue(ticket);
-
-            //    ticket = queueTemp.CreateTicket("П");
-            //    queueTemp.Enqueue(ticket);
-
-            //    ticket = queueTemp.CreateTicket("У");
-            //    queueTemp.Enqueue(ticket);
-
-            //    ticket = queueTemp.CreateTicket("З");
-            //    queueTemp.Enqueue(ticket);
-
-            //    ticket = queueTemp.CreateTicket("С");
-            //    queueTemp.Enqueue(ticket);
-
-            //    ticket = queueTemp.CreateTicket("Б");
-            //    queueTemp.Enqueue(ticket);
-            //}
+                ticket = queueTemp.CreateTicket("С");
+                queueTemp.Enqueue(ticket);
+            }
             //DEBUG----------------------------------------------
 
 
@@ -212,36 +210,34 @@ namespace Server.Model
                var queue= QueuePriorities.FirstOrDefault(q => q.Name == xmlCash.NameQueue);
                if (queue != null)
                {
-                   var casher = new Сashier(xmlCash.Id, xmlCash.Prefixs, queue, xmlCash.MaxCountTryHanding);
+                   var logName = "Server.CashierInfo_" + xmlCash.Port;
+                   var casher = new Сashier(xmlCash.Id, xmlCash.Prefixs, queue, xmlCash.MaxCountTryHanding, logName);
                    DeviceCashiers.Add(new DeviceCashier(xmlCash.AddressDevice, casher, xmlCash.Port));
                }
             }
             AdminCasher = DeviceCashiers.FirstOrDefault(d => d.Cashier.Prefixes.Contains("А"));
 
 
-            //ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ ОБЪЕКТОВ (сохранялись на момент закрытия программы)----------------------------------------------------------------------------------------
-            //LoadStates();
-
-
             //СОЗДАНИЕ ПОСЛЕД. ПОРТА ДЛЯ ОПРОСА КАССИРОВ-----------------------------------------------------------------------
             var cashersGroup = DeviceCashiers.GroupBy(d => d.Port).ToDictionary(group => group.Key, group => group.ToList());  //принадлежность кассира к порту
             foreach (var xmlSerial in xmlSerials)
             {
-                var sp= new MasterSerialPort(xmlSerial);
+                var logName = "Server.CashierInfo_" + xmlSerial.Port;
+                var sp= new MasterSerialPort(xmlSerial, logName);
                 var cashiers= cashersGroup[xmlSerial.Port];
-                var cashierExch= new CashierExchangeService(cashiers, AdminCasher, xmlSerial.TimeRespoune);
+                var cashierExch= new CashierExchangeService(cashiers, AdminCasher, xmlSerial.TimeRespoune, logName);
                 sp.AddFunc(cashierExch.ExchangeService);
-                sp.PropertyChanged += (o, e) =>
-                 {
-                     var port = o as MasterSerialPort;
-                     if (port != null)
-                     {
-                         if (e.PropertyName == "StatusString")
-                         {
-                             ErrorString = port.StatusString;                     //TODO: РАЗДЕЛЯЕМЫЙ РЕСУРС возможно нужна блокировка
-                        }
-                     }
-                 };
+                //sp.PropertyChanged += (o, e) =>
+                // {
+                //     var port = o as MasterSerialPort;
+                //     if (port != null)
+                //     {
+                //         if (e.PropertyName == "StatusString")
+                //         {
+                //             ErrorString = port.StatusString;                     //TODO: РАЗДЕЛЯЕМЫЙ РЕСУРС возможно нужна блокировка
+                //        }
+                //     }
+                // };
                 MasterSerialPorts.Add(sp);
                 CashierExchangeServices.Add(cashierExch);
             }

@@ -40,17 +40,42 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="0.7*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="0.7*" />
             <RowDefinition Height="*" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
 
+        <!--<RowDefinition Height="0.7*" />
+        <RowDefinition Height="0.7*" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="*" />-->
+
+
+
+        <Grid
+            Grid.Row="0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            Background="Crimson">
+
+            <TextBlock
+                Name="Description"
+                Padding="5,35,5,35"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                FontSize="35"
+                Foreground="White"
+                TextAlignment="Center"
+                TextWrapping="Wrap" />
+        </Grid>
+
+
         <TextBlock
             Name="TicketName"
-            Grid.Row="0"
-            Margin="10,100,10,0"
+            Grid.Row="1"
+            Margin="10,15,10,0"
             Style="{StaticResource TextBlockStyle}" />
 
         <!--<TextBlock Name="CountPeople"

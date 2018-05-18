@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Communication.Annotations;
 using Communication.Settings;
 using Communication.TcpIp;
+using Library.Logs;
 using Library.Xml;
 using Terminal.Infrastructure;
 using Terminal.Service;
@@ -16,6 +17,10 @@ namespace Terminal.Model
 {
     public class TerminalModel : INotifyPropertyChanged, IDisposable
     {
+        private readonly Log _logger = new Log("Terminal.CommandAddItem");
+
+
+
         #region prop
 
         public MasterTcpIp MasterTcpIp { get; set; }
@@ -43,10 +48,10 @@ namespace Terminal.Model
 
         #region Events
 
-        public event Func<string, string, bool> ConfirmationAdded;
-        private bool OnConfirmationAdded(string arg1, string arg2)
+        public event Func<string, string, string, bool> ConfirmationAdded;
+        private bool OnConfirmationAdded(string arg1, string arg2, string arg3)
         {
-            var res = ConfirmationAdded?.Invoke(arg1, arg2);
+            var res = ConfirmationAdded?.Invoke(arg1, arg2, arg3);
             return res != null && res.Value;
         }
 
@@ -111,45 +116,51 @@ namespace Terminal.Model
         }
 
 
-        public async Task QueueSelection(string nameQueue, string prefixQueue)
+        public async Task QueueSelection(string nameQueue, string prefixQueue, string descriptionQueue)
         {
             if(!IsConnectTcpIp)
                 return;
 
-            //if (MasterTcpIp == null || !MasterTcpIp.IsConnect)
-            //    return;
 
-            //ЗАПРОС О СОСТОЯНИИ ОЧЕРЕДИ
-            var provider = new Terminal2ServerExchangeDataProvider { InputData = new TerminalInData { NameQueue = nameQueue, PrefixQueue = prefixQueue, Action = TerminalAction.Info } };
-            await MasterTcpIp.RequestAndRespoune(provider);
-
-   
-            if (provider.IsOutDataValid)
+            try
             {
-                var prefix = provider.OutputData.PrefixQueue;
-                var ticketName = prefix + provider.OutputData.NumberElement.ToString("000");
-                var countPeople = provider.OutputData.CountElement.ToString();
+                //ЗАПРОС О СОСТОЯНИИ ОЧЕРЕДИ
+                var provider = new Terminal2ServerExchangeDataProvider { InputData = new TerminalInData { NameQueue = nameQueue, PrefixQueue = prefixQueue, Action = TerminalAction.Info } };
+                await MasterTcpIp.RequestAndRespouneAsync(provider);
 
-                var isAdded = OnConfirmationAdded(ticketName, countPeople);
-                if (isAdded)
+                if (provider.IsOutDataValid)
                 {
-                    //ЗАПРОС О ДОБАВЛЕНИИ ЭЛЕМЕНТА В ОЧЕРЕДЬ
-                    provider = new Terminal2ServerExchangeDataProvider { InputData = new TerminalInData { NameQueue = nameQueue, PrefixQueue = prefixQueue, Action = TerminalAction.Add } };
-                    await MasterTcpIp.RequestAndRespoune(provider);
+                    var prefix = provider.OutputData.PrefixQueue;
+                    var ticketName = prefix + provider.OutputData.NumberElement.ToString("000");
+                    var countPeople = provider.OutputData.CountElement.ToString();
 
-                    if (provider.IsOutDataValid)
+                    var isAdded = OnConfirmationAdded(ticketName, countPeople, descriptionQueue);
+                    if (isAdded)
                     {
-                        prefix = provider.OutputData.PrefixQueue;
-                        ticketName = prefix + provider.OutputData.NumberElement.ToString("000");
-                        countPeople = provider.OutputData.CountElement.ToString();
+                        //ЗАПРОС О ДОБАВЛЕНИИ ЭЛЕМЕНТА В ОЧЕРЕДЬ
+                        provider = new Terminal2ServerExchangeDataProvider { InputData = new TerminalInData { NameQueue = nameQueue, PrefixQueue = prefixQueue, Action = TerminalAction.Add } };
+                        await MasterTcpIp.RequestAndRespouneAsync(provider);
 
-                        PrintTicket.Print(ticketName, countPeople, provider.OutputData.AddedTime);
+                        if (provider.IsOutDataValid)
+                        {
+                            prefix = provider.OutputData.PrefixQueue;
+                            ticketName = prefix + provider.OutputData.NumberElement.ToString("000");
+                            countPeople = provider.OutputData.CountElement.ToString();
+
+                            PrintTicket.Print(ticketName, countPeople, provider.OutputData.AddedTime);
+
+                            _logger.Info($"PrintTicket: {provider.OutputData.AddedTime}     {ticketName}    nameQueue= {nameQueue}   descriptionQueue= {descriptionQueue}");
+                        }
+                    }
+                    else
+                    {
+                        // "НЕ добавлять"
                     }
                 }
-                else
-                {
-                    // "НЕ добавлять"
-                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"TerminalModel/QueueSelection()=   {ex}");
             }
         }
 

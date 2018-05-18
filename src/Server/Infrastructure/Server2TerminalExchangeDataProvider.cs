@@ -9,10 +9,24 @@ using Terminal.Infrastructure;
 
 namespace Server.Infrastructure
 {
+    //Один объект DataProvider используется для нескольких ClientTcpIp
     public class Server2TerminalExchangeDataProvider : IExchangeDataProvider<TerminalInData, TerminalOutData>
     {
+
+
+        public Server2TerminalExchangeDataProvider(bool isSynchronized)
+        {
+            IsSynchronized = isSynchronized;
+        }
+
+
+
+
         #region prop
-        private  readonly object _locker = new object();
+
+        public bool IsSynchronized { get; }
+        public object SyncRoot { get; } = new object();
+
 
         public int CountSetDataByte => 25;
         public int CountGetDataByte => 16;
@@ -23,11 +37,8 @@ namespace Server.Infrastructure
             get { return _inputData; }
             set
             {
-                lock (_locker)                               //Если один объект DataProvider используется для нескольких ClientTcpIp, то сработка OnPropertyChanged (обработка InputData), должна производится последовательно для всех ClientTcpIp.
-                {
-                    _inputData = value;
-                    OnPropertyChanged();
-                }
+                _inputData = value;
+                OnPropertyChanged();
             }
         }
 
@@ -63,13 +74,14 @@ namespace Server.Infrastructure
         /// </summary>
         public byte[] GetDataByte()
         {
+
             var buff = new byte[CountGetDataByte];
 
             var encoding = Encoding.Unicode;
             var prefixQueueBytes = encoding.GetBytes(OutputData.PrefixQueue).Take(2).ToArray();
 
-            buff[0]= 0xAA;
-            buff[1]= 0xBB;
+            buff[0] = 0xAA;
+            buff[1] = 0xBB;
             buff[2] = prefixQueueBytes[0];
             buff[3] = prefixQueueBytes[1];
 
@@ -83,6 +95,7 @@ namespace Server.Infrastructure
             dateAddedBuff.CopyTo(buff, 8);
 
             return buff;
+
         }
 
 
@@ -116,6 +129,7 @@ namespace Server.Infrastructure
         /// </summary>
         public bool SetDataByte(byte[] data)
         {
+
             IsOutDataValid = false;
 
             if (data == null || data.Count() < CountSetDataByte)
@@ -130,8 +144,8 @@ namespace Server.Infrastructure
                 {
                     var encoding = Encoding.Unicode;
                     nameQueue = encoding.GetString(data, 5, 20);
-                    nameQueue= nameQueue.TrimEnd();
-                    prefixQueue= encoding.GetString(data, 3, 2);
+                    nameQueue = nameQueue.TrimEnd();
+                    prefixQueue = encoding.GetString(data, 3, 2);
                 }
                 catch (Exception ex)
                 {
@@ -139,7 +153,7 @@ namespace Server.Infrastructure
                     return false;
                 }
 
-                InputData = new TerminalInData { NameQueue = nameQueue, PrefixQueue = prefixQueue, Action = (TerminalAction) data[2] };
+                InputData = new TerminalInData { NameQueue = nameQueue, PrefixQueue = prefixQueue, Action = (TerminalAction)data[2] };
                 IsOutDataValid = true;
             }
             else
@@ -148,10 +162,10 @@ namespace Server.Infrastructure
             }
 
             return IsOutDataValid;
+
         }
 
         #endregion
-
 
 
 
