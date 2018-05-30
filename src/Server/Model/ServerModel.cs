@@ -24,6 +24,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using Server.SerializableModel;
 using System.Runtime.Serialization.Formatters.Binary;
+using Sound.Players;
 
 namespace Server.Model
 {
@@ -39,7 +40,8 @@ namespace Server.Model
         public ListenerTcpIp Listener { get; set; }
         public IExchangeDataProvider<TerminalInData, TerminalOutData> ProviderTerminal { get; set; }
 
-        public SoundQueue SoundQueue { get; set; } = new SoundQueue(new SoundPlayer(), new SoundNameService(), 100);
+        public SoundQueue SoundQueue { get; set; } = new SoundQueue(new PlayerNAudio(), new SoundNameService(), 100);
+        //public SoundQueue SoundQueue { get; set; } = new SoundQueue(new PlayerDirectX(), new SoundNameService(), 100);
 
         public List<MasterSerialPort> MasterSerialPorts { get; } = new List<MasterSerialPort>();
         public List<DeviceCashier> DeviceCashiers { get; } = new List<DeviceCashier>();
@@ -60,8 +62,6 @@ namespace Server.Model
                 OnPropertyChanged();
             }
         }
-
-
 
         #endregion
 
@@ -86,6 +86,19 @@ namespace Server.Model
 
         public void LoadSetting()
         {
+            try
+            {
+                //var gg = new PlayerDirectXVer2();
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+      
+
+
             //ЗАГРУЗКА НАСТРОЕК----------------------------------------------------------------
             XmlListenerSettings xmlListener;
             IList<XmlSerialSettings> xmlSerials;
@@ -179,28 +192,28 @@ namespace Server.Model
             };
 
             //DEBUG------ИНИЦИАЛИЗАЦИЯ ОЧЕРЕДИ---------------------
-            //var queueTemp = QueuePriorities.FirstOrDefault(q => string.Equals(q.Name, "Main", StringComparison.InvariantCultureIgnoreCase));
-            //var queueAdmin = QueuePriorities.FirstOrDefault(q => string.Equals(q.Name, "Admin", StringComparison.InvariantCultureIgnoreCase));
-            //for (int i = 0; i < 200; i++)
-            //{
-            //    //var ticketAdmin = queueTemp.CreateTicket("А");
-            //    //queueAdmin.Enqueue(ticketAdmin);
+            var queueTemp = QueuePriorities.FirstOrDefault(q => string.Equals(q.Name, "Main", StringComparison.InvariantCultureIgnoreCase));
+            var queueAdmin = QueuePriorities.FirstOrDefault(q => string.Equals(q.Name, "Admin", StringComparison.InvariantCultureIgnoreCase));
+            for (int i = 0; i < 900; i++)
+            {
+                //var ticketAdmin = queueTemp.CreateTicket("А");
+                //queueAdmin.Enqueue(ticketAdmin);
 
-            //    var ticket = queueTemp.CreateTicket("К");
-            //    queueTemp.Enqueue(ticket);
+                var ticket = queueTemp.CreateTicket("А");
+                queueTemp.Enqueue(ticket);
 
-            //    ticket = queueTemp.CreateTicket("К");
-            //    queueTemp.Enqueue(ticket);
+                //ticket = queueTemp.CreateTicket("К");
+                //queueTemp.Enqueue(ticket);
 
-            //    ticket = queueTemp.CreateTicket("Г");
-            //    queueTemp.Enqueue(ticket);
+                //ticket = queueTemp.CreateTicket("Г");
+                //queueTemp.Enqueue(ticket);
 
-            //    ticket = queueTemp.CreateTicket("И");
-            //    queueTemp.Enqueue(ticket);
+                //ticket = queueTemp.CreateTicket("И");
+                //queueTemp.Enqueue(ticket);
 
-            //    ticket = queueTemp.CreateTicket("С");
-            //    queueTemp.Enqueue(ticket);
-            //}
+                //ticket = queueTemp.CreateTicket("С");
+                //queueTemp.Enqueue(ticket);
+            }
             //DEBUG----------------------------------------------
 
 

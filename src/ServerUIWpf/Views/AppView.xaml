@@ -1,16 +1,15 @@
-﻿<Window
-    x:Class="ServerUi.Views.AppView"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:cal="http://www.caliburnproject.org"
-    xmlns:ctrl="clr-namespace:Itenso.Windows.Controls.ListViewLayout;assembly=Itenso.Windows.Controls.ListViewLayout"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    AllowDrop="False"
-    Focusable="False"
-    WindowState="Maximized"
-    WindowStyle="None"
-    mc:Ignorable="d">
+﻿<Window x:Class="ServerUi.Views.AppView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:cal="http://www.caliburnproject.org"
+        xmlns:ctrl="clr-namespace:Itenso.Windows.Controls.ListViewLayout;assembly=Itenso.Windows.Controls.ListViewLayout"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        AllowDrop="False"
+        Focusable="False"
+        WindowState="Maximized"
+        WindowStyle="None"
+        mc:Ignorable="d">
 
 
     <Window.Resources>
@@ -47,13 +46,15 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ListView
-            Name="TableMain"
-            Grid.Row="0"
-            ctrl:ListViewLayoutManager.Enabled="true"
-            Background="{Binding Path=ColorBackground, Mode=OneWay}">
+
+        <ListView Name="TableMain"
+                  Grid.Row="0"
+                  ctrl:ListViewLayoutManager.Enabled="true"
+                  Background="{Binding Path=ColorBackground,
+                                       Mode=OneWay}">
 
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">
@@ -71,16 +72,14 @@
                             <EventTrigger.Actions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation
-                                            Storyboard.TargetProperty="Opacity"
-                                            From="0"
-                                            To="1"
-                                            Duration="0:0:0.5" />
-                                        <DoubleAnimation
-                                            Storyboard.TargetProperty="LayoutTransform.ScaleY"
-                                            From="0"
-                                            To="1"
-                                            Duration="0:0:0.5" />
+                                        <DoubleAnimation Duration="0:0:0.5"
+                                                         From="0"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1" />
+                                        <DoubleAnimation Duration="0:0:0.5"
+                                                         From="0"
+                                                         Storyboard.TargetProperty="LayoutTransform.ScaleY"
+                                                         To="1" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </EventTrigger.Actions>
@@ -111,29 +110,27 @@
             </ListView.View>
         </ListView>
 
-        <!--<StackPanel>
-            <Button
-                Width="25"
-                Height="25"
-                Margin="1"
-                cal:Message.Attach="Add(1)">
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal">
+            <Button Width="25"
+                    Height="25"
+                    Margin="1"
+                    cal:Message.Attach="Add(1)">
                 1Д
             </Button>
-            <Button
-                Width="25"
-                Height="25"
-                Margin="1"
-                cal:Message.Attach="Redirect(1)">
+            <Button Width="25"
+                    Height="25"
+                    Margin="1"
+                    cal:Message.Attach="Redirect(1)">
                 1Р
             </Button>
-            <Button
-                Width="25"
-                Height="25"
-                Margin="2,2,3,2"
-                cal:Message.Attach="Dell(1)">
+            <Button Width="25"
+                    Height="25"
+                    Margin="2,2,3,2"
+                    cal:Message.Attach="Dell(1)">
                 1У
             </Button>
-        </StackPanel>-->
+        </StackPanel>
 
     </Grid>
 </Window>

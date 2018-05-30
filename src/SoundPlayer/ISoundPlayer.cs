@@ -3,6 +3,20 @@ using NAudio.Wave;
 
 namespace Sound
 {
+    public enum SoundPlayerType
+    {
+        None, DirectX, Omneo
+    }
+
+    public enum SoundPlayerStatus
+    {
+        Idle,
+        Error,
+        Stop,
+        Playing,
+        Paused,
+    };
+
     public interface ISoundPlayer : IDisposable
     {
         bool PlayFile(string file);
@@ -16,6 +30,6 @@ namespace Sound
         long GetCurrentPosition();
         TimeSpan? GetDuration();
 
-        PlaybackState GetStatus();
+        SoundPlayerStatus GetPlayerStatus();
     }
 }

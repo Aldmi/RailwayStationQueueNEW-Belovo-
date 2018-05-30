@@ -1383,18 +1383,27 @@ namespace ServerUi.ViewModels
         }
 
 
-        public void Redirect(int idCashier)
+        public async void Redirect(int idCashier)
         {
-            if (_model.AdminCasher != null)
+            //DEBUG
+            for (int i = 0; i < 100; i++)
             {
-                var redirectTicket = _model.DeviceCashiers[idCashier - 1].Cashier.CurrentTicket;
-                if (redirectTicket != null)
-                {
-                    _model.AdminCasher.Cashier.AddRedirectedTicket(redirectTicket);
-                }
+                Add(idCashier);
+                await Task.Delay(1000);
+                Dell(idCashier);
             }
 
-            _model.DeviceCashiers[idCashier - 1].Cashier.SuccessfulHandling();
+
+            //if (_model.AdminCasher != null)
+            //{
+            //    var redirectTicket = _model.DeviceCashiers[idCashier - 1].Cashier.CurrentTicket;
+            //    if (redirectTicket != null)
+            //    {
+            //        _model.AdminCasher.Cashier.AddRedirectedTicket(redirectTicket);
+            //    }
+            //}
+
+            //_model.DeviceCashiers[idCashier - 1].Cashier.SuccessfulHandling();
         }
 
 

@@ -49,12 +49,10 @@ namespace Sound
         {
             Player = soundPlayer;
             SoundNameService = soundNameService;
-            _timerInvokeSoundQueue = new Timer(timerQueueInterval);
+            _timerInvokeSoundQueue= new Timer(timerQueueInterval);
             _timerInvokeSoundQueue.Elapsed += TimerInvokeSoundQueue_Elapsed;
             _timerInvokeSoundQueue.Start();
         }
-
-
 
         #endregion
 
@@ -82,8 +80,7 @@ namespace Sound
         {
             if (item == null)
                 return;
-
-
+      
             var agregateStr = item.FileNameQueue.Aggregate((i, j) => i + " " + j);//DEBUG
             _loggerSound.Error($"AddItem: {item.Name}     agregateStr= {agregateStr}     Thread= {Thread.CurrentThread.ManagedThreadId}");
             Queue.Enqueue(item);
@@ -152,10 +149,10 @@ namespace Sound
 
             try
             {
-                var status = Player.GetStatus();
+                var status = Player.GetPlayerStatus();
 
                 //Разматывание очереди. Определение проигрываемого файла-----------------------------------------------------------------------------
-                if (status != PlaybackState.Playing)
+                if (status != SoundPlayerStatus.Playing)
                 {
                     if (!Queue.IsEmpty)
                     {
@@ -165,7 +162,7 @@ namespace Sound
                             if (Queue.TryPeek(out outVal))
                             {
                                 CurrentSoundMessagePlaying = outVal;
-                            }
+                            }                  
                             //CurrentSoundMessagePlaying = Queue.Peek();
                         }
 
@@ -173,17 +170,17 @@ namespace Sound
                         {
                             SoundTemplate outVal;
                             if (Queue.TryDequeue(out outVal))
-                            {
-                                CurrentSoundMessagePlaying = null;
-                                OnPropertyChanged("Queue");
-                            }
-                        }
+                            {                           
+                              CurrentSoundMessagePlaying = null;
+                              OnPropertyChanged("Queue");
+                           }
+                        } 
                     }
 
                     if (CurrentSoundMessagePlaying == null)
-                        return;
-
-                    var soundFile = CurrentSoundMessagePlaying.FileNameQueue.Any() ? CurrentSoundMessagePlaying.FileNameQueue.Dequeue() : null;
+                       return;
+                    
+                    var soundFile= CurrentSoundMessagePlaying.FileNameQueue.Any() ? CurrentSoundMessagePlaying.FileNameQueue.Dequeue() : null;
                     if (soundFile?.Contains(".wav") == false)
                         soundFile = SoundNameService?.GetFileName(soundFile);
 
@@ -192,10 +189,12 @@ namespace Sound
                         _loggerSound.Info($"PlayFile: IsNullOrEmpty {soundFile}");
                         return;
                     }
-
-                    _loggerSound.Info($"PlayFile: {soundFile}");
-                    Player.PlayFile(soundFile);
-                }
+         
+                    if (Player.PlayFile(soundFile))
+                    {
+                        _loggerSound.Info($"PlayFile: {soundFile}");
+                    }
+                 }
             }
             catch (Exception ex)
             {
@@ -226,7 +225,7 @@ namespace Sound
 
         public void Dispose()
         {
-            Player?.Dispose();
+          Player?.Dispose();
         }
 
         #endregion
