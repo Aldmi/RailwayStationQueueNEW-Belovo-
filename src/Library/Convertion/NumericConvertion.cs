@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Library.Convertion
 {
-    public static class NumericConvertion
+    static public class NumericConvertion
     {
         public static byte[] UshortArrayToByteArray(ushort[] input)
         {

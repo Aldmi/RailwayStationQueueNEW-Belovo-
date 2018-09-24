@@ -21,10 +21,11 @@ using Server.Settings;
 using Sound;
 using Terminal.Infrastructure;
 using System.Collections.Concurrent;
+using System.Media;
 using System.Text;
 using Server.SerializableModel;
 using System.Runtime.Serialization.Formatters.Binary;
-using Sound.Players;
+using SoundPlayer = Sound.SoundPlayer;
 
 namespace Server.Model
 {
@@ -40,8 +41,7 @@ namespace Server.Model
         public ListenerTcpIp Listener { get; set; }
         public IExchangeDataProvider<TerminalInData, TerminalOutData> ProviderTerminal { get; set; }
 
-        public SoundQueue SoundQueue { get; set; } = new SoundQueue(new PlayerNAudio(), new SoundNameService(), 100);
-        //public SoundQueue SoundQueue { get; set; } = new SoundQueue(new PlayerDirectX(), new SoundNameService(), 100);
+        public SoundQueue SoundQueue { get; set; } = new SoundQueue(new SoundPlayer(), new SoundNameService(), 100);
 
         public List<MasterSerialPort> MasterSerialPorts { get; } = new List<MasterSerialPort>();
         public List<DeviceCashier> DeviceCashiers { get; } = new List<DeviceCashier>();
@@ -62,6 +62,8 @@ namespace Server.Model
                 OnPropertyChanged();
             }
         }
+
+
 
         #endregion
 
@@ -86,19 +88,6 @@ namespace Server.Model
 
         public void LoadSetting()
         {
-            try
-            {
-                //var gg = new PlayerDirectXVer2();
-
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                throw;
-            }
-      
-
-
             //ЗАГРУЗКА НАСТРОЕК----------------------------------------------------------------
             XmlListenerSettings xmlListener;
             IList<XmlSerialSettings> xmlSerials;
@@ -126,9 +115,7 @@ namespace Server.Model
                 return;
             }
 
-            //РАЗРЕШИТЬ ЛОГГИРОВАНИЕ-----------------------------------------------------------
-            Log.EnableLogging(true);
-
+       
             //СОЗДАНИЕ ОЧЕРЕДИ-----------------------------------------------------------------------
             foreach (var xmlQueue in xmlQueues)
             {
@@ -194,15 +181,16 @@ namespace Server.Model
             //DEBUG------ИНИЦИАЛИЗАЦИЯ ОЧЕРЕДИ---------------------
             var queueTemp = QueuePriorities.FirstOrDefault(q => string.Equals(q.Name, "Main", StringComparison.InvariantCultureIgnoreCase));
             var queueAdmin = QueuePriorities.FirstOrDefault(q => string.Equals(q.Name, "Admin", StringComparison.InvariantCultureIgnoreCase));
-            for (int i = 0; i < 900; i++)
+            for (int i = 0; i < 50; i++)
             {
                 //var ticketAdmin = queueTemp.CreateTicket("А");
                 //queueAdmin.Enqueue(ticketAdmin);
 
-                var ticket = queueTemp.CreateTicket("А");
-                queueTemp.Enqueue(ticket);
 
-                //ticket = queueTemp.CreateTicket("К");
+                //var ticket = queueTemp.CreateTicket("А");
+                //queueTemp.Enqueue(ticket);
+
+                //ticket = queueTemp.CreateTicket("М");
                 //queueTemp.Enqueue(ticket);
 
                 //ticket = queueTemp.CreateTicket("Г");
@@ -211,7 +199,22 @@ namespace Server.Model
                 //ticket = queueTemp.CreateTicket("И");
                 //queueTemp.Enqueue(ticket);
 
+                //ticket = queueTemp.CreateTicket("В");
+                //queueTemp.Enqueue(ticket);
+
+                //ticket = queueTemp.CreateTicket("П");
+                //queueTemp.Enqueue(ticket);
+
+                //ticket = queueTemp.CreateTicket("У");
+                //queueTemp.Enqueue(ticket);
+
+                //ticket = queueTemp.CreateTicket("З");
+                //queueTemp.Enqueue(ticket);
+
                 //ticket = queueTemp.CreateTicket("С");
+                //queueTemp.Enqueue(ticket);
+
+                //ticket = queueTemp.CreateTicket("Б");
                 //queueTemp.Enqueue(ticket);
             }
             //DEBUG----------------------------------------------
@@ -223,34 +226,36 @@ namespace Server.Model
                var queue= QueuePriorities.FirstOrDefault(q => q.Name == xmlCash.NameQueue);
                if (queue != null)
                {
-                   var logName = "Server.CashierInfo_" + xmlCash.Port;
-                   var casher = new Сashier(xmlCash.Id, xmlCash.Prefixs, queue, xmlCash.MaxCountTryHanding, logName);
+                   var casher = new Сashier(xmlCash.Id, xmlCash.Prefixs, queue, xmlCash.MaxCountTryHanding);
                    DeviceCashiers.Add(new DeviceCashier(xmlCash.AddressDevice, casher, xmlCash.Port));
                }
             }
             AdminCasher = DeviceCashiers.FirstOrDefault(d => d.Cashier.Prefixes.Contains("А"));
 
 
+            //ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ ОБЪЕКТОВ (сохранялись на момент закрытия программы)----------------------------------------------------------------------------------------
+            //LoadStates();
+
+
             //СОЗДАНИЕ ПОСЛЕД. ПОРТА ДЛЯ ОПРОСА КАССИРОВ-----------------------------------------------------------------------
             var cashersGroup = DeviceCashiers.GroupBy(d => d.Port).ToDictionary(group => group.Key, group => group.ToList());  //принадлежность кассира к порту
             foreach (var xmlSerial in xmlSerials)
             {
-                var logName = "Server.CashierInfo_" + xmlSerial.Port;
-                var sp= new MasterSerialPort(xmlSerial, logName);
+                var sp= new MasterSerialPort(xmlSerial);
                 var cashiers= cashersGroup[xmlSerial.Port];
-                var cashierExch= new CashierExchangeService(cashiers, AdminCasher, xmlSerial.TimeRespoune, logName);
+                var cashierExch= new CashierExchangeService(cashiers, AdminCasher, xmlSerial.TimeRespoune);
                 sp.AddFunc(cashierExch.ExchangeService);
-                //sp.PropertyChanged += (o, e) =>
-                // {
-                //     var port = o as MasterSerialPort;
-                //     if (port != null)
-                //     {
-                //         if (e.PropertyName == "StatusString")
-                //         {
-                //             ErrorString = port.StatusString;                     //TODO: РАЗДЕЛЯЕМЫЙ РЕСУРС возможно нужна блокировка
-                //        }
-                //     }
-                // };
+                sp.PropertyChanged += (o, e) =>
+                 {
+                     var port = o as MasterSerialPort;
+                     if (port != null)
+                     {
+                         if (e.PropertyName == "StatusString")
+                         {
+                             ErrorString = port.StatusString;                     //TODO: РАЗДЕЛЯЕМЫЙ РЕСУРС возможно нужна блокировка
+                        }
+                     }
+                 };
                 MasterSerialPorts.Add(sp);
                 CashierExchangeServices.Add(cashierExch);
             }

@@ -1,16 +1,14 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Timers;
 using Communication.Annotations;
 using Library.Logs;
 using NAudio.Wave;
-using Timer = System.Timers.Timer;
+
 
 
 namespace Sound
@@ -20,6 +18,7 @@ namespace Sound
         #region field
 
         private readonly Timer _timerInvokeSoundQueue;
+
         private readonly Log _loggerSound = new Log("Sound.SoundQueue");
 
         #endregion
@@ -32,7 +31,7 @@ namespace Sound
         public ISoundPlayer Player { get; set; }
         public ISoundNameService SoundNameService { get; set; }
 
-        private ConcurrentQueue<SoundTemplate> Queue { get; set; } = new ConcurrentQueue<SoundTemplate>();
+        private Queue<SoundTemplate> Queue { get; } = new Queue<SoundTemplate>();
         public IEnumerable<SoundTemplate> GetQueue => Queue;
         public SoundTemplate CurrentSoundMessagePlaying { get; set; }
         public string CurrentFilePlaying { get; set; }
@@ -53,6 +52,8 @@ namespace Sound
             _timerInvokeSoundQueue.Elapsed += TimerInvokeSoundQueue_Elapsed;
             _timerInvokeSoundQueue.Start();
         }
+
+
 
         #endregion
 
@@ -80,9 +81,8 @@ namespace Sound
         {
             if (item == null)
                 return;
-      
-            var agregateStr = item.FileNameQueue.Aggregate((i, j) => i + " " + j);//DEBUG
-            _loggerSound.Error($"AddItem: {item.Name}     agregateStr= {agregateStr}     Thread= {Thread.CurrentThread.ManagedThreadId}");
+
+            _loggerSound.Info($"AddItem: {item.Name}");
             Queue.Enqueue(item);
             OnPropertyChanged("Queue");
         }
@@ -108,7 +108,7 @@ namespace Sound
         /// </summary>
         public void Clear()
         {
-            Queue = new ConcurrentQueue<SoundTemplate>();
+            Queue?.Clear();
             CurrentSoundMessagePlaying = null;
             CurrentFilePlaying = null;
             OnPropertyChanged("Queue");
@@ -149,32 +149,24 @@ namespace Sound
 
             try
             {
-                var status = Player.GetPlayerStatus();
+                var status = Player.GetStatus();
 
                 //Разматывание очереди. Определение проигрываемого файла-----------------------------------------------------------------------------
-                if (status != SoundPlayerStatus.Playing)
+                if (status != PlaybackState.Playing)
                 {
-                    if (!Queue.IsEmpty)
+                    if (Queue.Any())
                     {
                         if (CurrentSoundMessagePlaying == null)
                         {
-                            SoundTemplate outVal;
-                            if (Queue.TryPeek(out outVal))
-                            {
-                                CurrentSoundMessagePlaying = outVal;
-                            }                  
-                            //CurrentSoundMessagePlaying = Queue.Peek();
+                            CurrentSoundMessagePlaying = Queue.Peek();
                         }
 
                         if (!CurrentSoundMessagePlaying.FileNameQueue.Any())
                         {
-                            SoundTemplate outVal;
-                            if (Queue.TryDequeue(out outVal))
-                            {                           
-                              CurrentSoundMessagePlaying = null;
-                              OnPropertyChanged("Queue");
-                           }
-                        } 
+                            Queue.Dequeue();
+                            CurrentSoundMessagePlaying = null;
+                            OnPropertyChanged("Queue");
+                        }
                     }
 
                     if (CurrentSoundMessagePlaying == null)
@@ -184,26 +176,20 @@ namespace Sound
                     if (soundFile?.Contains(".wav") == false)
                         soundFile = SoundNameService?.GetFileName(soundFile);
 
-                    if (string.IsNullOrEmpty(soundFile) || string.IsNullOrWhiteSpace(soundFile))
-                    {
-                        _loggerSound.Info($"PlayFile: IsNullOrEmpty {soundFile}");
+                    if(string.IsNullOrEmpty(soundFile) || string.IsNullOrWhiteSpace(soundFile))
                         return;
-                    }
-         
-                    if (Player.PlayFile(soundFile))
-                    {
-                        _loggerSound.Info($"PlayFile: {soundFile}");
-                    }
+
+                    _loggerSound.Info($"PlayFile: {soundFile}");
+                    Player.PlayFile(soundFile);
                  }
             }
             catch (Exception ex)
             {
-                _loggerSound.Error($"SoundQueue/Invoke  {ex.Message}");
+                _loggerSound.Error($"SoundQueue/Invoke  {ex}");
             }
         }
 
         #endregion
-
 
 
 
@@ -217,7 +203,6 @@ namespace Sound
         }
 
         #endregion
-
 
 
 

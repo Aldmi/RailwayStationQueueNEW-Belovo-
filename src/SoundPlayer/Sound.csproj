@@ -52,11 +52,9 @@
   <ItemGroup>
     <Compile Include="ISoundNameService.cs" />
     <Compile Include="ISoundPlayer.cs" />
-    <Compile Include="Players\PlayerDirectX.cs" />
-    <Compile Include="Players\PlayerDirectXVer2.cs" />
     <Compile Include="SoundNameService.cs" />
-    <Compile Include="Players\PlayerNAudio.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SoundPlayer.cs" />
     <Compile Include="SoundQueue.cs" />
     <Compile Include="SoundTemplate.cs" />
   </ItemGroup>

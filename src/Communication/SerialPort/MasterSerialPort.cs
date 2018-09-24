@@ -11,7 +11,6 @@ using Communication.Interfaces;
 using Communication.Settings;
 using Library.Async;
 using System.Diagnostics;
-using Library.Logs;
 
 namespace Communication.SerialPort
 {
@@ -26,9 +25,6 @@ namespace Communication.SerialPort
         private readonly int _timeCycleReConnect;
 
         private readonly System.IO.Ports.SerialPort _port; //COM порт
-
-        private readonly string _logName;
-        private readonly Log _loggerSpInfo;
 
         #endregion
 
@@ -49,12 +45,9 @@ namespace Communication.SerialPort
             _timeCycleReConnect = timeCycleReConnect;
         }
 
-        public MasterSerialPort(XmlSerialSettings xmlSerial, string logName) :
+        public MasterSerialPort(XmlSerialSettings xmlSerial) :
             this(xmlSerial.Port, xmlSerial.BaudRate, xmlSerial.DataBits, xmlSerial.StopBits, xmlSerial.TimeCycleReConnect)
         {
-
-            _logName = logName;
-            _loggerSpInfo = new Log(_logName);
         }
 
         #endregion
@@ -136,8 +129,6 @@ namespace Communication.SerialPort
             {
                 IsConnect = false;
                 StatusString = $"Ошибка открытия порта: {_port.PortName}. ОШИБКА: {ex}";
-                _loggerSpInfo.Info(StatusString);//LOG;
-                
                 return false;
             }
 
@@ -177,7 +168,6 @@ namespace Communication.SerialPort
                 catch (Exception ex)
                 {
                     StatusString = $"Ошибка работы с портом: {_port.PortName}. ОШИБКА: {ex}";
-                    _loggerSpInfo.Info(StatusString);//LOG;
                 }
             }
         }

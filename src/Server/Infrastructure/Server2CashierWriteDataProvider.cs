@@ -5,9 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Communication.Annotations;
 using Communication.Interfaces;
-using Library.Convertion;
 using Library.Library;
-using Library.Logs;
 using Server.Entitys;
 
 namespace Server.Infrastructure
@@ -23,9 +21,6 @@ namespace Server.Infrastructure
         private const ushort NWriteRegister = 0x0001;
         private readonly byte _addressDevice;
 
-        private readonly string _logName;
-        private readonly Log _loggerCashierInfo;
-
         #endregion
 
 
@@ -33,11 +28,9 @@ namespace Server.Infrastructure
 
         #region ctor
 
-        public Server2CashierWriteDataProvider(byte addressDevice, string logName)
+        public Server2CashierWriteDataProvider(byte addressDevice)
         {
             _addressDevice = addressDevice;
-            _logName = logName;
-            _loggerCashierInfo = new Log(_logName);
         }
 
         #endregion
@@ -110,8 +103,6 @@ namespace Server.Infrastructure
             var crc = Crc16.ModRTU_CRC(buff, CountGetDataByte - 2);
             crc.CopyTo(buff, CountGetDataByte - 2);
 
-            _loggerCashierInfo.Info($"Запрос на Запись в планшет БИЛЕТА:  \"{buff.ConertByteArray2String()}\"");
-
             return buff;
         }
 
@@ -132,7 +123,6 @@ namespace Server.Infrastructure
         {
             if (data == null || data.Length != CountSetDataByte)
             {
-                _loggerCashierInfo.Info($"Ответ на Запись в планшет БИЛЕТА: НЕ валиден");
                 IsOutDataValid = false;
                 return false;
             }
@@ -141,12 +131,10 @@ namespace Server.Infrastructure
                 data[1] == 0x10 &&
                 Crc16.CheckCrc(data))
             {
-                _loggerCashierInfo.Info($"Ответ на Запись в планшет БИЛЕТА: ВАЛИДЕН");
                 IsOutDataValid = true;
                 return true;
             }
 
-            _loggerCashierInfo.Info($"Ответ на Запись в планшет БИЛЕТА: НЕ верно CRC:  \"{data.ConertByteArray2String()}\"");
             IsOutDataValid = false;      
             return false;
         }

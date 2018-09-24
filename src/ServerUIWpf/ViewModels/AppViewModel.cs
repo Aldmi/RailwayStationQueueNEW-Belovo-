@@ -1389,7 +1389,7 @@ namespace ServerUi.ViewModels
             for (int i = 0; i < 100; i++)
             {
                 Add(idCashier);
-                await Task.Delay(1000);
+                await Task.Delay(6000);
                 Dell(idCashier);
             }
 
