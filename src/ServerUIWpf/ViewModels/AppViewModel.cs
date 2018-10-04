@@ -1416,12 +1416,12 @@ namespace ServerUi.ViewModels
         public async void Redirect(int idCashier)
         {
             //DEBUG
-            for (int i = 0; i < 100; i++)
-            {
-                Add(idCashier);
-                await Task.Delay(8000);
-                Dell(idCashier);
-            }
+            //for (int i = 0; i < 100; i++)
+            //{
+            //    Add(idCashier);
+            //    await Task.Delay(8000);
+            //    Dell(idCashier);
+            //}
 
 
             //if (_model.AdminCasher != null)
