@@ -144,7 +144,10 @@ namespace Server.Model
                             var queue = QueuePriorities.FirstOrDefault(q => string.Equals(q.Name, nameQueue, StringComparison.InvariantCultureIgnoreCase));
 
                             if (queue == null)
+                            {
+                                _logQueueInput.Info($"Очередь НЕ НАЙДЕНА: {nameQueue}");
                                 return;
+                            }
 
                             switch (provider.InputData.Action)
                             {

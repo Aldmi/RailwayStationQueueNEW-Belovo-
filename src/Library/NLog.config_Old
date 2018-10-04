@@ -111,17 +111,6 @@
       </layout>
     </target>
     
-  
-    <!--Terminal.PrintTicket-->
-    <target name="Terminal.CheckPrintStatus.Error"
-            xsi:type="File"
-            fileName="${basedir}/Csv/${shortdate}_ErrorPrintStatus.csv">
-      <layout xsi:type="CSVLayout">
-        <column name="time" layout="${date:format=yyyy-MM-dd HH\:mm\:ss}" />
-        <column name="message" layout="${message}" />
-      </layout>
-    </target>
-    
   </targets>
   
   
@@ -135,16 +124,13 @@
 
     <logger name="Server.CashierInfo_1" Level="Error" writeTo="Server.CashierInfo.ErrorTarget_8" />
     <logger name="Server.CashierInfo_1" Level="Info" writeTo="Server.CashierInfo.csvCashierInfo_8" />
-    <logger name="Server.CashierInfo_4" Level="Error" writeTo="Server.CashierInfo.ErrorTarget_9" />
-    <logger name="Server.CashierInfo_4" Level="Info" writeTo="Server.CashierInfo.csvCashierInfo_9" />
+    <logger name="Server.CashierInfo_9" Level="Error" writeTo="Server.CashierInfo.ErrorTarget_9" />
+    <logger name="Server.CashierInfo_9" Level="Info" writeTo="Server.CashierInfo.csvCashierInfo_9" />
 
     <logger name="Terminal.CommandAddItem" Level="Error" writeTo="Terminal.ErrorTarget" />
     <logger name="Terminal.CommandAddItem" Level="Info" writeTo="Terminal.csvTerminalCommand" />
 
     <logger name="Sound.SoundQueue" Level="Error" writeTo="SoundQueue.ErrorTarget" />
     <logger name="Sound.SoundQueue" Level="Info" writeTo="SoundQueue.Info" />
-  
-    <logger name="Terminal.CheckPrintStatus" Level="Error" writeTo="Terminal.CheckPrintStatus.Error" />
-
   </rules>
 </nlog>
