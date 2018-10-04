@@ -779,28 +779,48 @@ namespace ServerUi.ViewModels
             {
                 if (e.PropertyName == "CurrentTicket")
                 {
-                    if (сashier.CurrentTicket != null)     //добавить элемент к списку
+                    try
                     {
-                        var ticket = new TicketItem
+                        if (сashier.CurrentTicket != null)     //добавить элемент к списку
                         {
-                            CashierId = сashier.Id,
-                            CashierName = сashier.CurrentTicket.Cashbox.ToString(),
-                            TicketName = $"{сashier.CurrentTicket.Prefix}{сashier.CurrentTicket.NumberElement:000}",
-                        };
+                            var ticket = new TicketItem
+                            {
+                                CashierId = сashier.Id,
+                                CashierName = сashier.CurrentTicket.Cashbox.ToString(),
+                                TicketName = $"{сashier.CurrentTicket.Prefix}{сashier.CurrentTicket.NumberElement:000}",
+                            };
 
-                        var ticketPrefix = ticket.TicketName.Substring(0, 1);
-                        var ticketNumber = ticket.TicketName.Substring(1, 3);
-                        var formatStr = $"Талон {ticketPrefix} {ticketNumber} Касса {ticket.CashierName}";
-                        _model.SoundQueue.AddItem(new SoundTemplate(formatStr));
+                            var ticketPrefix = ticket.TicketName.Substring(0, 1);
+                            var ticketNumber = ticket.TicketName.Substring(1, 3);
+                            var formatStr = $"Талон {ticketPrefix} {ticketNumber} Касса {ticket.CashierName}";
+                            _model.SoundQueue.AddItem(new SoundTemplate(formatStr));
 
-                        FillTable(ticket, TableMain);
+                            FillTable(ticket, TableMain);
 
-                        //LOG
-                        _logger.Info(сashier.CurrentTicket.ToString());
+                           
+                            сashier.CurrentTicket.StartProcessingTime = DateTime.Now;
+                            //_logger.Info(сashier.CurrentTicket.ToString());
+                        }
+                        else                                 //удалить элемент из списка
+                        {
+                            сashier.PreviousTicket.EndProcessingTime = DateTime.Now;
+                            ClearTable(сashier.Id, TableMain);
+                            //LOG
+                            var ticket = сashier.PreviousTicket;
+                            var logDict= new Dictionary<string, object>
+                            {
+                                {"CashierNumber", ticket.Cashbox?.ToString() ?? "неизвестный кассир" },
+                                {"TicketNumber", ticket.Prefix + ticket.NumberElement.ToString("000")},
+                                {"DateAdded2Queue", ticket.AddedTime},
+                                {"StartDateProcessing", ticket.StartProcessingTime},
+                                {"EndDateProcessing", ticket.EndProcessingTime}
+                            };
+                            _logger.LogEventContext(logDict);
+                        }
                     }
-                    else                                 //удалить элемент из списка
+                    catch (Exception ex)
                     {
-                        ClearTable(сashier.Id, TableMain);
+                        _logger.Error($"ServerModel/Cashier_PropertyChanged= {ex.Message}");
                     }
                 }
             }
@@ -1359,6 +1379,16 @@ namespace ServerUi.ViewModels
 
         protected override void OnDeactivate(bool close)
         {
+            _model.PropertyChanged -= _model_PropertyChanged;
+            foreach (var devCashier in _model.DeviceCashiers)
+            {
+                devCashier.Cashier.PropertyChanged -= Cashier_PropertyChanged;
+                devCashier.PropertyChanged -= DevCashierOnPropertyChanged;
+            }
+            _model.Listener.PropertyChanged -= Listener_PropertyChanged;
+            _model.SoundQueue.PropertyChanged -= SoundQueue_PropertyChanged;
+
+
             _model.Dispose();
             base.OnDeactivate(close);
         }
@@ -1389,7 +1419,7 @@ namespace ServerUi.ViewModels
             for (int i = 0; i < 100; i++)
             {
                 Add(idCashier);
-                await Task.Delay(6000);
+                await Task.Delay(8000);
                 Dell(idCashier);
             }
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using NLog;
 using NLog.Config;
@@ -8,6 +9,9 @@ namespace Library.Logs
     public class Log : IDisposable
     {
         private readonly Logger _logger;
+        private static bool _isEnable;
+
+
 
 
 
@@ -29,30 +33,65 @@ namespace Library.Logs
 
 
 
-
         #region Methode
+
+        public static void EnableLogging(bool enable)
+        {
+            _isEnable = enable;
+        }
+
 
         public void Info(string message)
         {
+            if(!_isEnable)
+                return;
+
             _logger.Info(message);
         }
 
         public void Debug(string message)
         {
+            if (!_isEnable)
+                return;
+
             _logger.Debug(message);
         }
 
         public void Error(string message)
         {
+            if (!_isEnable)
+                return;
+
             _logger.Error(message);
         }
 
         public void Fatal(string message)
         {
+            if (!_isEnable)
+                return;
+
             _logger.Fatal(message);
         }
 
+
+        /// <summary>
+        /// Добавляет логирования кастомного свойства в отдельную колонку (csv)
+        /// Например: <column name="Дата добавления в очередь" layout="${event-context:item=DateAdded2Queue}" />
+        /// </summary>
+        /// <param name="dict"></param>
+        public void LogEventContext(Dictionary<string, object> dict)
+        {
+            var myEvent = new LogEventInfo(LogLevel.Info, _logger.Name, string.Empty);
+            foreach (var kvp in dict)
+            {
+                myEvent.Properties.Add(kvp.Key, kvp.Value);
+            }
+            _logger.Log(myEvent);
+        }
+
         #endregion
+
+
 
 
         #region Dispose

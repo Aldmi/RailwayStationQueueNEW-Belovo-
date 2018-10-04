@@ -5,6 +5,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Communication.Annotations;
 using System.Collections.Concurrent;
+using System.Threading;
+using System.Threading.Tasks;
 using Library.Logs;
 
 
@@ -26,11 +28,12 @@ namespace Server.Entitys
         #region Fields
 
         private readonly byte _maxCountTryHandin;
+        private readonly string _logName;
         private readonly QueuePriority _queueTicket;
 
         // Внутренняя очередь кассира, хранит Перенаправленные билеты, самая приоритетная на извлечение.
         private readonly Queue<TicketItem> _internalQueueTicket = new Queue<TicketItem>();
-        private static readonly Log LoggerCashierInfo = new Log("Server.CashierInfo");
+        private readonly Log _loggerCashierInfo;
 
         #endregion
 
@@ -56,22 +59,28 @@ namespace Server.Entitys
             }
         }
 
+        public TicketItem PreviousTicket { get; set; }
+
+        public bool CanHandling => (CurrentTicket != null);
+
         #endregion
 
 
 
-        
+
         #region ctor
 
-        public Сashier(byte id, List<string> prefixes, QueuePriority queueTicket, byte maxCountTryHanding)
+        public Сashier(byte id, List<string> prefixes, QueuePriority queueTicket, byte maxCountTryHanding, string logName)
         {
             Id = id;
 
             _queueTicket = queueTicket;
             _maxCountTryHandin = maxCountTryHanding;
+            _logName = logName;
+            _loggerCashierInfo = new Log(_logName);
 
-           //Выделить префиксы идущие за All.
-           var prefixExclude= prefixes.SkipWhile(p => p != "All").ToList();
+            //Выделить префиксы идущие за All.
+            var prefixExclude= prefixes.SkipWhile(p => p != "All").ToList();
            if (prefixExclude.Count > 1)
            {
                PrefixesExclude = prefixExclude.Skip(1).ToList();
@@ -90,6 +99,20 @@ namespace Server.Entitys
         #region Methode
 
         /// <summary>
+        /// Успешная обработка клиента.
+        /// </summary>
+        public async Task<TicketItem> SuccessfulHandlingAsync(CancellationToken ct)
+        {
+            _loggerCashierInfo.Info($"Команда от кассира: \"SuccessfulHandling (Успешная обработка клиента.)\"  Id= {Id}  NameTicket= {(CurrentTicket != null ? CurrentTicket.Prefix + CurrentTicket.NumberElement.ToString("000") : string.Empty)}");//LOG
+            PreviousTicket = CurrentTicket;
+            CurrentTicket = null;
+            return CurrentTicket;
+        }
+
+
+
+
+        /// <summary>
         /// Показали 1-ый элемент в очереди (без извлечения из очереди)
         /// </summary>    
         public TicketItem StartHandling()
@@ -100,7 +123,7 @@ namespace Server.Entitys
             if (CurrentTicket != null)//TODO:???
             {
                 CurrentTicket.Cashbox = Id;
-                LoggerCashierInfo.Info($"Команда от кассира: \"StartHandling. (Отправка синхронизации билета)\"  Id= {Id}  NameTicket= {CurrentTicket}");//LOG
+                _loggerCashierInfo.Info($"Команда от кассира: \"StartHandling. (Отправка синхронизации билета)\"  Id= {Id}  NameTicket= {(CurrentTicket != null ? CurrentTicket.Prefix + CurrentTicket.NumberElement.ToString("000") : string.Empty )}");//LOG
                 return CurrentTicket;
             }
 
@@ -109,7 +132,7 @@ namespace Server.Entitys
             {
                 var newTicket = _internalQueueTicket.Peek();
                 newTicket.Cashbox = Id;
-                LoggerCashierInfo.Info($"Команда от кассира: \"StartHandling (внутреняя очередь)\"  Id= {Id}  NameTicket= {newTicket}");//LOG
+                _loggerCashierInfo.Info($"Команда от кассира [НАЧАЛО ТРАНЗАЦИИ]: \"StartHandling (внутреняя очередь)\"  Id= {Id}  NameTicket= NameTicket= {newTicket.Prefix + newTicket.NumberElement.ToString("000")}");//LOG
                 return newTicket;
             }
 
@@ -121,12 +144,12 @@ namespace Server.Entitys
                 {
                     if (newTicket.Cashbox != null) //Билет из очереди не должен быть в обработке кассиром.
                     {
-                        LoggerCashierInfo.Error($"Команда от кассира: \"StartHandling (!!!!!!!!!!!Билет из очереди не должен быть в обработке кассиром)!!!!!!!!!!\"  Id= {Id}  NameTicket= {newTicket}");//LOG
+                        _loggerCashierInfo.Info($"Команда от кассира: \"StartHandling (!!!!!!!!!!!Билет из очереди не должен быть в обработке кассиром)!!!!!!!!!!\"  Id= {Id}  NameTicket= {newTicket.Prefix + newTicket.NumberElement.ToString("000")}");//LOG
                         //return null;//TODO: Прверить лог на возниконверние этого условия
                     }
 
                     newTicket.Cashbox = Id;
-                    LoggerCashierInfo.Info($"Команда от кассира: \"StartHandling (Работаем с внешней очередью)\"  Id= {Id}  NameTicket= {newTicket}");//LOG
+                    _loggerCashierInfo.Info($"Команда от кассира [НАЧАЛО ТРАНЗАЦИИ]: \"StartHandling (Работаем с внешней очередью)\"  Id= {Id}  NameTicket= {newTicket.Prefix + newTicket.NumberElement.ToString("000")}");//LOG
                     return newTicket;
                 }
             }
@@ -144,7 +167,7 @@ namespace Server.Entitys
             {
                 CurrentTicket.Cashbox = Id;
                 CurrentTicket.CountTryHandling++;
-                LoggerCashierInfo.Info($"Команда от кассира: \"SuccessfulStartHandling (Ответ на Отправка синхронизации билета)\"  Id= {Id}  NameTicket= {CurrentTicket}");//LOG
+                _loggerCashierInfo.Info($"Команда от кассира [КОНЕЦ ТРАНЗАЦИИ]: \"SuccessfulStartHandling (Ответ на Отправка синхронизации билета)\"  Id= {Id}  NameTicket= {(CurrentTicket != null ? CurrentTicket.Prefix + CurrentTicket.NumberElement.ToString("000") : string.Empty)}");//LOG
                 return;
             }
 
@@ -155,7 +178,7 @@ namespace Server.Entitys
                 newTicket.Cashbox = Id;
                 CurrentTicket = newTicket;
                 CurrentTicket.CountTryHandling++;
-                LoggerCashierInfo.Info($"Команда от кассира: \"SuccessfulStartHandling (внутреняя очередь)\"  Id= {Id}  NameTicket= {CurrentTicket}");//LOG
+                _loggerCashierInfo.Info($"Команда от кассира [КОНЕЦ ТРАНЗАЦИИ]: \"SuccessfulStartHandling (внутреняя очередь)\"  Id= {Id}  NameTicket= {(CurrentTicket != null ? CurrentTicket.Prefix + CurrentTicket.NumberElement.ToString("000") : string.Empty)}");//LOG
                 return;
             }
 
@@ -168,7 +191,7 @@ namespace Server.Entitys
                     newTicket.Cashbox = Id;
                     CurrentTicket = newTicket;
                     CurrentTicket.CountTryHandling++;
-                    LoggerCashierInfo.Info($"Команда от кассира: \"SuccessfulStartHandling (Работаем с внешней очередью)\"  Id= {Id}  NameTicket= {CurrentTicket}");//LOG
+                    _loggerCashierInfo.Info($"Команда от кассира [КОНЕЦ ТРАНЗАЦИИ]: \"SuccessfulStartHandling (Работаем с внешней очередью)\"  Id= {Id}  NameTicket= {(CurrentTicket != null ? CurrentTicket.Prefix + CurrentTicket.NumberElement.ToString("000") : string.Empty)}");//LOG
                 }
             }
         }
@@ -179,7 +202,8 @@ namespace Server.Entitys
         /// </summary>
         public TicketItem SuccessfulHandling()
         {
-            LoggerCashierInfo.Info($"Команда от кассира: \"SuccessfulHandling (Успешная обработка клиента.)\"  Id= {Id}  NameTicket= {CurrentTicket}");//LOG
+            _loggerCashierInfo.Info($"Команда от кассира: \"SuccessfulHandling (Успешная обработка клиента.)\"  Id= {Id}  NameTicket= {(CurrentTicket != null ? CurrentTicket.Prefix + CurrentTicket.NumberElement.ToString("000") : string.Empty)}");//LOG
+            PreviousTicket = CurrentTicket;
             CurrentTicket = null;
             return CurrentTicket;
         }
@@ -191,12 +215,16 @@ namespace Server.Entitys
         /// </summary>
         public TicketItem ErrorHandling()
         {
+            if (CurrentTicket == null)
+                return null;
+
             CurrentTicket.Cashbox= null;
-            CurrentTicket.AddedTime = DateTime.Now;
+            CurrentTicket.AddedTime= DateTime.Now;
             if (CurrentTicket?.CountTryHandling < _maxCountTryHandin)
               _queueTicket.Enqueue(CurrentTicket);
 
-            LoggerCashierInfo.Info($"Команда от кассира: \"ErrorHandling (Клиент не обрабаотанн.)\"  Id= {Id}    CountTryHandling= {CurrentTicket?.CountTryHandling}  NameTicket= {CurrentTicket}");//LOG
+            _loggerCashierInfo.Info($"Команда от кассира: \"ErrorHandling (Клиент не обрабаотанн.)\"  Id= {Id}    CountTryHandling= {CurrentTicket?.CountTryHandling}  NameTicket= {(CurrentTicket != null ? CurrentTicket.Prefix + CurrentTicket.NumberElement.ToString("000") : string.Empty)}");//LOG
+            PreviousTicket = CurrentTicket;
             CurrentTicket = null;
             return CurrentTicket;
         }
@@ -207,6 +235,7 @@ namespace Server.Entitys
             if (CurrentTicket != null)
             {
                 _queueTicket.Enqueue(CurrentTicket);
+                PreviousTicket = CurrentTicket;
                 CurrentTicket = null;
             }
         }
@@ -217,7 +246,7 @@ namespace Server.Entitys
         /// </summary>
         public void AddRedirectedTicket(TicketItem ticket)
         {
-            LoggerCashierInfo.Info($"Команда от кассира: \"AddRedirectedTicket (Добавить перенаправленный билет.)\"  Id= {Id}  NameTicket= {ticket}");//LOG
+            _loggerCashierInfo.Info($"Команда от кассира: \"AddRedirectedTicket (Добавить перенаправленный билет.)\"  Id= {Id}  NameTicket= {(CurrentTicket != null ? CurrentTicket.Prefix + CurrentTicket.NumberElement.ToString("000") : string.Empty)}");//LOG
             _internalQueueTicket.Enqueue(ticket);
         }
 
