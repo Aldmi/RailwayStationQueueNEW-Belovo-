@@ -142,6 +142,9 @@ namespace TerminalUIWpf.ViewModels
         /// </summary>
         public async Task BtnLongRoad()
         {
+             if(!_model.IsConnectTcpIp)
+                return;
+
             const string descriptionQueue = "Купить билет на поезд дальнего следования";
             const string prefixQueue = "А";
             const string nameQueue = "Main";

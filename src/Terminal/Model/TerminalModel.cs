@@ -8,9 +8,13 @@ using Communication.Settings;
 using Communication.TcpIp;
 using Library.Logs;
 using Library.Xml;
+using NLog;
+using NLog.Config;
+using NLog.Targets;
 using Terminal.Infrastructure;
 using Terminal.Service;
 using Terminal.Settings;
+using LogLevel = NLog.LogLevel;
 
 
 namespace Terminal.Model
@@ -18,6 +22,26 @@ namespace Terminal.Model
     public class TerminalModel : INotifyPropertyChanged, IDisposable
     {
         private readonly Log _logger = new Log("Terminal.CommandAddItem");
+
+        private readonly Logger _loggerRaw;//DEBUG
+
+
+        public TerminalModel()
+        {
+            var config = new LoggingConfiguration();
+            var fileTarget = new FileTarget("target2")
+            {
+                FileName = "${basedir}/logs/Log.txt",
+                Layout = "${longdate} ${level} ${message} ${exception}"
+            };
+            config.AddTarget(fileTarget);
+
+            config.AddRuleForAllLevels(fileTarget);
+            LogManager.Configuration = config;
+
+            _loggerRaw = LogManager.GetLogger("1111");
+            _loggerRaw.Info("Create TerminalModel .........");
+        }
 
 
 
@@ -118,20 +142,31 @@ namespace Terminal.Model
 
         public async Task QueueSelection(string nameQueue, string prefixQueue, string descriptionQueue)
         {
-            if(!IsConnectTcpIp)
+            if (!IsConnectTcpIp)
+            {
+                _loggerRaw.Info("NotConnect");   //DEBUG
                 return;
+            }
 
             try
             {
+                _loggerRaw.Info("ЗАПРОС О СОСТОЯНИИ ОЧЕРЕДИ");   //DEBUG
+
                 //ЗАПРОС О СОСТОЯНИИ ОЧЕРЕДИ
                 var provider = new Terminal2ServerExchangeDataProvider { InputData = new TerminalInData { NameQueue = nameQueue, PrefixQueue = prefixQueue, Action = TerminalAction.Info } };
+                _loggerRaw.Info("RequestAndRespouneAsync");   //DEBUG
                 await MasterTcpIp.RequestAndRespouneAsync(provider);
+
+                //_logger.Info($"provider.IsOutDataValid=   {provider.IsOutDataValid}");
+                _loggerRaw.Info($"provider.IsOutDataValid=  {provider.IsOutDataValid}");   //DEBUG
 
                 if (provider.IsOutDataValid)
                 {
                     var prefix = provider.OutputData.PrefixQueue;
                     var ticketName = prefix + provider.OutputData.NumberElement.ToString("000");
                     var countPeople = provider.OutputData.CountElement.ToString();
+
+                    _loggerRaw.Info($"prefix= {prefix}  ticketName= {ticketName}  countPeople= {countPeople}");   //DEBUG
 
                     var isAdded = OnConfirmationAdded(ticketName, countPeople, descriptionQueue);
                     if (isAdded)
@@ -148,7 +183,8 @@ namespace Terminal.Model
 
                             PrintTicket.Print(ticketName, countPeople, provider.OutputData.AddedTime);
 
-                            _logger.Info($"PrintTicket: {provider.OutputData.AddedTime}     {ticketName}    nameQueue= {nameQueue}   descriptionQueue= {descriptionQueue}");
+                            //_logger.Info($"PrintTicket: {provider.OutputData.AddedTime}     {ticketName}    nameQueue= {nameQueue}   descriptionQueue= {descriptionQueue}");
+                            _loggerRaw.Info($"PrintTicket: {provider.OutputData.AddedTime}     {ticketName}    nameQueue= {nameQueue}   descriptionQueue= {descriptionQueue}");   //DEBUG
                         }
                     }
                     else
@@ -159,7 +195,8 @@ namespace Terminal.Model
             }
             catch (Exception ex)
             {
-                _logger.Error($"TerminalModel/QueueSelection()=   {ex}");
+                //_logger.Error($"TerminalModel/QueueSelection()=   {ex}");
+                _loggerRaw.Error($"provider.IsOutDataValid= {ex}");   //DEBUG
             }
         }
 
